@@ -9,7 +9,22 @@
 	var/opened = 0
 
 
-/obj/structure/extinguisher_cabinet/attackby(obj/item/O, mob/user)
+/obj/structure/extinguisher_cabinet/ex_act(severity, target)
+	switch(severity)
+		if(1.0)
+			qdel(src)
+			return
+		if(2.0)
+			if(prob(50))
+				if(has_extinguisher)
+					has_extinguisher.loc = src.loc
+				qdel(src)
+				return
+		if(3.0)
+			return
+
+
+/obj/structure/extinguisher_cabinet/attackby(obj/item/O, mob/user, params)
 	if(isrobot(user) || isalien(user))
 		return
 	if(istype(O, /obj/item/weapon/extinguisher))

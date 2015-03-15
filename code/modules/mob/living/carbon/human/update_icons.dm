@@ -34,12 +34,11 @@ There are several things that need to be remembered:
 
 
 >	There are also these special cases:
-		update_mutations()			//handles updating your appearance for certain mutations.  e.g TK head-glows
 		update_damage_overlays()	//handles damage overlays for brute/burn damage
 		update_base_icon_state()	//Handles updating var/base_icon_state (WIP) This is used to update the
 									mob's icon_state easily e.g. "[base_icon_state]_s" is the standing icon_state
 		update_body()				//Handles updating your mob's icon_state (using update_base_icon_state())
-									as well as sprite-accessories that didn't really fit elsewhere (underwear, lips, eyes)
+									as well as sprite-accessories that didn't really fit elsewhere (underwear, undershirts, socks, lips, eyes)
 									//NOTE: update_mutantrace() is now merged into this!
 		update_hair()				//Handles updating your hair overlay (used to be update_face, but mouth and
 									eyes were merged into update_body())
@@ -56,50 +55,54 @@ Please contact me on #coderbus IRC. ~Carnie x
 */
 
 //Human Overlays Indexes/////////
-#define BODY_LAYER				22		//underwear, eyes, lips(makeup)
-#define MUTATIONS_LAYER			21		//Tk headglows etc.
-#define AUGMENTS_LAYER			20
-#define DAMAGE_LAYER			19		//damage indicators (cuts and burns)
-#define UNIFORM_LAYER			18
-#define ID_LAYER				17
-#define SHOES_LAYER				16
-#define GLOVES_LAYER			15
-#define EARS_LAYER				14
-#define SUIT_LAYER				13
-#define GLASSES_LAYER			12
-#define BELT_LAYER				11		//Possible make this an overlay of somethign required to wear a belt?
-#define SUIT_STORE_LAYER		10
-#define BACK_LAYER				9
-#define HAIR_LAYER				8		//TODO: make part of head layer?
-#define FACEMASK_LAYER			7
-#define HEAD_LAYER				6
-#define HANDCUFF_LAYER			5
-#define LEGCUFF_LAYER			4
-#define L_HAND_LAYER			3
-#define R_HAND_LAYER			2		//Having the two hands seperate seems rather silly, merge them together? It'll allow for code to be reused on mobs with arbitarily many hands
+#define SPECIES_LAYER			26		// mutantrace colors... these are on a seperate layer in order to prvent
+#define BODY_BEHIND_LAYER		25
+#define BODY_LAYER				24		//underwear, undershirts, socks, eyes, lips(makeup)
+#define BODY_ADJ_LAYER			23
+#define MUTATIONS_LAYER			22		//Tk headglows etc.
+#define AUGMENTS_LAYER			21
+#define DAMAGE_LAYER			20		//damage indicators (cuts and burns)
+#define UNIFORM_LAYER			19
+#define ID_LAYER				18
+#define SHOES_LAYER				17
+#define GLOVES_LAYER			16
+#define EARS_LAYER				15
+#define SUIT_LAYER				14
+#define GLASSES_LAYER			13
+#define BELT_LAYER				12		//Possible make this an overlay of somethign required to wear a belt?
+#define SUIT_STORE_LAYER		11
+#define BACK_LAYER				10
+#define HAIR_LAYER				9		//TODO: make part of head layer?
+#define FACEMASK_LAYER			8
+#define HEAD_LAYER				7
+#define HANDCUFF_LAYER			6
+#define LEGCUFF_LAYER			5
+#define L_HAND_LAYER			4
+#define R_HAND_LAYER			3		//Having the two hands seperate seems rather silly, merge them together? It'll allow for code to be reused on mobs with arbitarily many hands
+#define BODY_FRONT_LAYER		2
 #define FIRE_LAYER				1		//If you're on fire
-#define TOTAL_LAYERS			22		//KEEP THIS UP-TO-DATE OR SHIT WILL BREAK ;_;
+#define TOTAL_LAYERS			26		//KEEP THIS UP-TO-DATE OR SHIT WILL BREAK ;_;
 //////////////////////////////////
+
 /mob/living/carbon/human
 	var/list/overlays_standing[TOTAL_LAYERS]
 
 /mob/living/carbon/human/proc/update_base_icon_state()
-	var/race = dna ? dna.mutantrace : null
-	switch(race)
-		if("lizard","golem","slime","shadow","adamantine","fly","plant")
-			base_icon_state = "[dna.mutantrace]_[(gender == FEMALE) ? "f" : "m"]"
-		if("skeleton")
-			base_icon_state = "skeleton"
+	//var/race = dna ? dna.mutantrace : null
+	if(dna)
+		base_icon_state = dna.species.update_base_icon_state(src)
+	else
+		if(disabilities & HUSK)
+			base_icon_state = "husk"
 		else
-			if(HUSK in mutations)
-				base_icon_state = "husk"
-			else
-				base_icon_state = "[skin_tone]_[(gender == FEMALE) ? "f" : "m"]"
+			base_icon_state = "[skin_tone]_[(gender == FEMALE) ? "f" : "m"]"
+
 	icon_state = "[base_icon_state]_s"
 
 
 /mob/living/carbon/human/proc/apply_overlay(cache_index)
 	var/image/I = overlays_standing[cache_index]
+
 	if(I)
 		overlays += I
 
@@ -145,99 +148,36 @@ Please contact me on #coderbus IRC. ~Carnie x
 	//Reset our hair
 	remove_overlay(HAIR_LAYER)
 
-	//mutants don't have hair. masks and helmets can obscure our hair too.
-	if( (HUSK in mutations) || (dna && dna.mutantrace) || (head && (head.flags & BLOCKHAIR)) || (wear_mask && (wear_mask.flags & BLOCKHAIR)) )
+	if( (disabilities & HUSK) || (head && (head.flags & BLOCKHAIR)) || (wear_mask && (wear_mask.flags & BLOCKHAIR)) )
 		return
 
-	//base icons
-	var/datum/sprite_accessory/S
-	var/list/standing	= list()
+	if((wear_suit) && (wear_suit.hooded) && (wear_suit.suittoggled == 1))
+		return
 
-	if(facial_hair_style)
-		S = facial_hair_styles_list[facial_hair_style]
-		if(S)
-			var/image/img_facial_s = image("icon" = S.icon, "icon_state" = "[S.icon_state]_s", "layer" = -HAIR_LAYER)
+	if(dna)
+		dna.species.handle_hair(src)
 
-			var/new_color = "#" + facial_hair_color
-			img_facial_s.color = new_color
+/mob/living/carbon/human/proc/update_mutcolor()
+	if(dna && !(disabilities & HUSK))
+		dna.species.update_color(src)
 
-			standing	+= img_facial_s
-
-	//Applies the debrained overlay if there is no brain
-	if(!getorgan(/obj/item/organ/brain))
-		standing	+= image("icon"='icons/mob/human_face.dmi', "icon_state" = "debrained_s", "layer" = -HAIR_LAYER)
-	else if(hair_style)
-		S = hair_styles_list[hair_style]
-		if(S)
-			var/image/img_hair_s = image("icon" = S.icon, "icon_state" = "[S.icon_state]_s", "layer" = -HAIR_LAYER)
-
-			var/new_color = "#" + hair_color
-			img_hair_s.color = new_color
-
-			standing	+= img_hair_s
-
-	if(standing.len)
-		overlays_standing[HAIR_LAYER]	= standing
-
-	apply_overlay(HAIR_LAYER)
-
-
-/mob/living/carbon/human/update_mutations()
-	remove_overlay(MUTATIONS_LAYER)
-
-	var/list/standing	= list()
-
-	var/g = (gender == FEMALE) ? "f" : "m"
-	for(var/mut in mutations)
-		switch(mut)
-			if(HULK)
-				standing	+= image("icon"='icons/effects/genetics.dmi', "icon_state"="hulk_[g]_s", "layer"=-MUTATIONS_LAYER)
-			if(COLD_RESISTANCE)
-				standing	+= image("icon"='icons/effects/genetics.dmi', "icon_state"="fire_s", "layer"=-MUTATIONS_LAYER)
-			if(TK)
-				standing	+= image("icon"='icons/effects/genetics.dmi', "icon_state"="telekinesishead_s", "layer"=-MUTATIONS_LAYER)
-			if(LASER)
-				standing	+= image("icon"='icons/effects/genetics.dmi', "icon_state"="lasereyes_s", "layer"=-MUTATIONS_LAYER)
-	if(standing.len)
-		overlays_standing[MUTATIONS_LAYER]	= standing
-
-	apply_overlay(MUTATIONS_LAYER)
+/mob/living/carbon/human/proc/update_mutant_bodyparts()
+	if(dna)
+		dna.species.handle_mutant_bodyparts(src)
 
 
 /mob/living/carbon/human/proc/update_body()
 	remove_overlay(BODY_LAYER)
 
-	update_base_icon_state()
+	if(dna)
+		base_icon_state = dna.species.update_base_icon_state(src)
+	else
+		update_base_icon_state()
+
 	icon_state = "[base_icon_state]_s"
 
-	var/list/standing	= list()
-
-	//Mouth	(lipstick!)
-	if(lip_style)
-		standing	+= image("icon"='icons/mob/human_face.dmi', "icon_state"="lips_[lip_style]_s", "layer" = -BODY_LAYER)
-
-	//Eyes
-	if(!dna || dna.mutantrace != "skeleton")
-		var/image/img_eyes_s = image("icon" = 'icons/mob/human_face.dmi', "icon_state" = "eyes_s", "layer" = -BODY_LAYER)
-
-		var/new_color = "#" + eye_color
-
-		img_eyes_s.color = new_color
-
-		standing	+= img_eyes_s
-
-	//Underwear
-	if(underwear)
-		var/datum/sprite_accessory/underwear/U = underwear_all[underwear]
-		if(U)
-			standing	+= image("icon"=U.icon, "icon_state"="[U.icon_state]_s", "layer"=-BODY_LAYER)
-
-
-	if(standing.len)
-		overlays_standing[BODY_LAYER]	= standing
-
-	apply_overlay(BODY_LAYER)
-
+	if(dna)	// didn't want to have a duplicate if(dna) here, but due to the ordering of the code this was the only way
+		dna.species.handle_body(src)
 
 /mob/living/carbon/human/update_fire()
 
@@ -252,6 +192,7 @@ Please contact me on #coderbus IRC. ~Carnie x
 	remove_overlay(AUGMENTS_LAYER)
 
 	var/list/standing	= list()
+	var/g = (gender == FEMALE) ? "f" : "m"
 
 
 	if(getlimb(/obj/item/organ/limb/robot/r_arm))
@@ -265,7 +206,7 @@ Please contact me on #coderbus IRC. ~Carnie x
 		standing	+= image("icon"='icons/mob/augments.dmi', "icon_state"="l_leg_s", "layer"=-AUGMENTS_LAYER)
 
 	if(getlimb(/obj/item/organ/limb/robot/chest))
-		standing	+= image("icon"='icons/mob/augments.dmi', "icon_state"="chest_s", "layer"=-AUGMENTS_LAYER)
+		standing	+= image("icon"='icons/mob/augments.dmi', "icon_state"="chest_[g]_s", "layer"=-AUGMENTS_LAYER)
 	if(getlimb(/obj/item/organ/limb/robot/head))
 		standing	+= image("icon"='icons/mob/augments.dmi', "icon_state"="head_s", "layer"=-AUGMENTS_LAYER)
 
@@ -274,8 +215,6 @@ Please contact me on #coderbus IRC. ~Carnie x
 
 	apply_overlay(AUGMENTS_LAYER)
 
-
-
 /* --------------------------------------- */
 //For legacy support.
 /mob/living/carbon/human/regenerate_icons()
@@ -283,7 +222,6 @@ Please contact me on #coderbus IRC. ~Carnie x
 	if(notransform)		return
 	update_body()
 	update_hair()
-	update_mutations()
 	update_inv_w_uniform()
 	update_inv_wear_id()
 	update_inv_gloves()
@@ -305,6 +243,8 @@ Please contact me on #coderbus IRC. ~Carnie x
 	update_transform()
 	//Hud Stuff
 	update_hud()
+	// Mutantrace colors
+	update_mutcolor()
 
 /* --------------------------------------- */
 //vvvvvv UPDATE_INV PROCS vvvvvv
@@ -319,19 +259,20 @@ Please contact me on #coderbus IRC. ~Carnie x
 				w_uniform.screen_loc = ui_iclothing //...draw the item in the inventory screen
 			client.screen += w_uniform				//Either way, add the item to the HUD
 
+		if(wear_suit && (wear_suit.flags_inv & HIDEJUMPSUIT))
+			return
+
 		var/t_color = w_uniform.item_color
 		if(!t_color)		t_color = icon_state
 		var/image/standing	= image("icon"='icons/mob/uniform.dmi', "icon_state"="[t_color]_s", "layer"=-UNIFORM_LAYER)
+
 		overlays_standing[UNIFORM_LAYER]	= standing
 
-		var/G = (gender == FEMALE) ? "f" : "m"
-		if(G == "f" && U.fitted == 1)
-			var/index = "[t_color]_s"
-			var/icon/female_uniform_icon = female_uniform_icons[index]
-			if(!female_uniform_icon ) 	//Create standing/laying icons if they don't exist
-				generate_uniform(index,t_color)
-			standing	= image("icon"=female_uniform_icons["[t_color]_s"], "layer"=-UNIFORM_LAYER)
-			overlays_standing[UNIFORM_LAYER]	= standing
+		if(dna && dna.species.sexes)
+			var/G = (gender == FEMALE) ? "f" : "m"
+			if(G == "f" && U.fitted != NO_FEMALE_UNIFORM)
+				standing	= wear_female_version(t_color, 'icons/mob/uniform.dmi', UNIFORM_LAYER, U.fitted)
+				overlays_standing[UNIFORM_LAYER]	= standing
 
 		if(w_uniform.blood_DNA)
 			standing.overlays	+= image("icon"='icons/effects/blood.dmi', "icon_state"="uniformblood")
@@ -375,9 +316,10 @@ Please contact me on #coderbus IRC. ~Carnie x
 
 		if(gloves.blood_DNA)
 			standing.overlays	+= image("icon"='icons/effects/blood.dmi', "icon_state"="bloodyhands")
+
 	else
 		if(blood_DNA)
-			overlays_standing[GLOVES_LAYER]	= image("icon"='icons/effects/blood.dmi', "icon_state"="bloodyhands")
+			overlays_standing[GLOVES_LAYER]	= image("icon"='icons/effects/blood.dmi', "icon_state"="bloodyhands", "layer"=-GLOVES_LAYER)
 
 	apply_overlay(GLOVES_LAYER)
 
@@ -503,8 +445,10 @@ Please contact me on #coderbus IRC. ~Carnie x
 			var/obj/item/clothing/suit/S = wear_suit
 			standing.overlays	+= image("icon"='icons/effects/blood.dmi', "icon_state"="[S.blood_overlay_type]blood")
 
-	apply_overlay(SUIT_LAYER)
+	src.update_hair()
+	src.update_mutant_bodyparts()
 
+	apply_overlay(SUIT_LAYER)
 
 /mob/living/carbon/human/update_inv_pockets()
 	if(l_store)
@@ -532,10 +476,9 @@ Please contact me on #coderbus IRC. ~Carnie x
 		if(wear_mask.blood_DNA && !istype(wear_mask, /obj/item/clothing/mask/cigarette))
 			standing.overlays	+= image("icon"='icons/effects/blood.dmi', "icon_state"="maskblood")
 
+	update_mutant_bodyparts()
 
 	apply_overlay(FACEMASK_LAYER)
-
-
 
 /mob/living/carbon/human/update_inv_back()
 	remove_overlay(BACK_LAYER)
@@ -605,7 +548,7 @@ Please contact me on #coderbus IRC. ~Carnie x
 		var/t_state = r_hand.item_state
 		if(!t_state)	t_state = r_hand.icon_state
 
-		overlays_standing[R_HAND_LAYER] = image("icon"='icons/mob/items_righthand.dmi', "icon_state"="[t_state]", "layer"=-R_HAND_LAYER)
+		overlays_standing[R_HAND_LAYER] = image("icon" = r_hand.righthand_file, "icon_state"="[t_state]", "layer"=-R_HAND_LAYER)
 
 	apply_overlay(R_HAND_LAYER)
 
@@ -624,11 +567,21 @@ Please contact me on #coderbus IRC. ~Carnie x
 		var/t_state = l_hand.item_state
 		if(!t_state)	t_state = l_hand.icon_state
 
-		overlays_standing[L_HAND_LAYER] = image("icon"='icons/mob/items_lefthand.dmi', "icon_state"="[t_state]", "layer"=-L_HAND_LAYER)
+		overlays_standing[L_HAND_LAYER] = image("icon" = l_hand.lefthand_file, "icon_state"="[t_state]", "layer"=-L_HAND_LAYER)
 
 	apply_overlay(L_HAND_LAYER)
 
+/mob/living/carbon/human/proc/wear_female_version(t_color, icon, layer, type)
+	var/index = "[t_color]_s"
+	var/icon/female_clothing_icon = female_clothing_icons[index]
+	if(!female_clothing_icon) 	//Create standing/laying icons if they don't exist
+		generate_female_clothing(index,t_color,icon,type)
+	var/standing	= image("icon"=female_clothing_icons["[t_color]_s"], "layer"=-layer)
+	return(standing)
+
+
 //Human Overlays Indexes/////////
+#undef SPECIES_LAYER
 #undef BODY_LAYER
 #undef MUTATIONS_LAYER
 #undef DAMAGE_LAYER

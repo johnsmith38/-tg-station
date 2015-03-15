@@ -57,7 +57,7 @@
 		return
 	// and play
 	var/turf/source = get_turf(instrumentObj)
-	for(var/mob/M in hearers(15, source))
+	for(var/mob/M in get_hearers_in_view(15, source))
 		M.playsound_local(source, soundfile, 100, falloff = 5)
 
 /datum/song/proc/updateDialog(mob/user as mob)
@@ -174,7 +174,7 @@
 
 
 /datum/song/Topic(href, href_list)
-	if(usr.canUseTopic(src))
+	if(!usr.canUseTopic(instrumentObj))
 		usr << browse(null, "window=instrument")
 		usr.unset_machine()
 		return
@@ -323,7 +323,13 @@
 	..()
 
 /obj/structure/piano/attack_hand(mob/user as mob)
+	if(!user.IsAdvancedToolUser())
+		user << "<span class='danger'>You don't have the dexterity to do this!</span>"
+		return 1
 	interact(user)
+
+/obj/structure/piano/attack_paw(mob/user as mob)
+	return src.attack_hand(user)
 
 /obj/structure/piano/interact(mob/user as mob)
 	if(!user || !anchored)
@@ -332,7 +338,7 @@
 	user.set_machine(src)
 	song.interact(user)
 
-/obj/structure/piano/attackby(obj/item/O as obj, mob/user as mob)
+/obj/structure/piano/attackby(obj/item/O as obj, mob/user as mob, params)
 	if (istype(O, /obj/item/weapon/wrench))
 		if (!anchored && !isinspace())
 			playsound(src.loc, 'sound/items/Ratchet.ogg', 50, 1)

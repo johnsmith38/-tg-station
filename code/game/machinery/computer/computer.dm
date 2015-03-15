@@ -8,9 +8,15 @@
 	active_power_usage = 300
 	var/obj/item/weapon/circuitboard/circuit = null //if circuit==null, computer can't disassembly
 	var/processing = 0
+	var/brightness_on = 2
 
-/obj/machinery/computer/New()
-	..()
+/obj/machinery/computer/New(location, obj/item/weapon/circuitboard/C)
+	..(location)
+	if(C && istype(C))
+		circuit = C
+	else
+		if(circuit)
+			circuit = new circuit(null)
 	power_change()
 
 /obj/machinery/computer/initialize()
@@ -26,7 +32,10 @@
 	..()
 
 
-/obj/machinery/computer/ex_act(severity)
+/obj/machinery/computer/ex_act(severity, target)
+	if(target == src)
+		qdel(src)
+		return
 	switch(severity)
 		if(1.0)
 			qdel(src)
@@ -61,14 +70,16 @@
 /obj/machinery/computer/update_icon()
 	..()
 	icon_state = initial(icon_state)
+	SetLuminosity(brightness_on)
 	// Broken
 	if(stat & BROKEN)
 		icon_state += "b"
 
-	// Powered
+	// Unpowered
 	else if(stat & NOPOWER)
 		icon_state = initial(icon_state)
 		icon_state += "0"
+		SetLuminosity(0)
 
 
 
@@ -83,15 +94,15 @@
 		update_icon()
 	return
 
-/obj/machinery/computer/attackby(I as obj, user as mob)
+/obj/machinery/computer/attackby(I as obj, user as mob, params)
 	if(istype(I, /obj/item/weapon/screwdriver) && circuit)
 		playsound(src.loc, 'sound/items/Screwdriver.ogg', 50, 1)
 		user << "<span class='notice'> You start to disconnect the monitor.</span>"
 		if(do_after(user, 20))
 			var/obj/structure/computerframe/A = new /obj/structure/computerframe( src.loc )
-			var/obj/item/weapon/circuitboard/M = new circuit( A )
-			A.circuit = M
+			A.circuit = circuit
 			A.anchored = 1
+			circuit = null
 			for (var/obj/C in src)
 				C.loc = src.loc
 			if (src.stat & BROKEN)
@@ -110,7 +121,8 @@
 	. = ..()
 	return
 
-/obj/machinery/computer/attack_paw(mob/user)
+/obj/machinery/computer/attack_paw(mob/living/user)
+	user.do_attack_animation(src)
 	if(circuit)
 		if(prob(10))
 			user.visible_message("<span class='danger'>[user.name] smashes the [src.name] with its paws.</span>",\
@@ -122,7 +134,8 @@
 	"<span class='danger'>You smash against the [src.name] with your paws.</span>",\
 	"<span class='danger'>You hear a clicking sound.</span>")
 
-/obj/machinery/computer/attack_alien(mob/user)
+/obj/machinery/computer/attack_alien(mob/living/user)
+	user.do_attack_animation(src)
 	if(circuit)
 		if(prob(80))
 			user.visible_message("<span class='danger'>[user.name] smashes the [src.name] with its claws.</span>",\

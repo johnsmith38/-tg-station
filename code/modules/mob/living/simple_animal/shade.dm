@@ -24,7 +24,7 @@
 	speed = -1
 	stop_automated_movement = 1
 	status_flags = 0
-	faction = "cult"
+	faction = list("cult")
 	status_flags = CANPUSH
 
 
@@ -32,14 +32,13 @@
 	..()
 	if(stat == 2)
 		new /obj/item/weapon/ectoplasm (src.loc)
-		for(var/mob/M in viewers(src, null))
-			M.visible_message("<span class='warning'>[src] lets out a contented sigh as their form unwinds.</span>")
+		visible_message("<span class='warning'>[src] lets out a contented sigh as their form unwinds.</span>")
 		ghostize()
 		qdel(src)
 		return
 
 
-/mob/living/simple_animal/shade/attackby(var/obj/item/O as obj, var/mob/user as mob)  //Marker -Agouri
+/mob/living/simple_animal/shade/attackby(var/obj/item/O as obj, var/mob/user as mob, params)  //Marker -Agouri
 	if(istype(O, /obj/item/device/soulstone))
 		var/obj/item/device/soulstone/SS = O
 		SS.transfer_soul("SHADE", src, user)

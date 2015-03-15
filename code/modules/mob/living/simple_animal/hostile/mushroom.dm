@@ -9,6 +9,7 @@
 	maxHealth = 10
 	health = 10
 	meat_type = /obj/item/weapon/reagent_containers/food/snacks/hugemushroomslice
+	meat_amount = 1
 	response_help  = "pets"
 	response_disarm = "gently pushes aside"
 	response_harm   = "whacks"
@@ -17,12 +18,13 @@
 	melee_damage_upper = 1
 	attack_same = 2
 	attacktext = "chomps"
-	faction = "mushroom"
+	faction = list("mushroom")
 	environment_smash = 0
 	stat_attack = 2
 	mouse_opacity = 1
 	speed = 1
 	ventcrawler = 2
+	robust_searching = 1
 	var/powerlevel = 0 //Tracks our general strength level gained from eating other shrooms
 	var/bruised = 0 //If someone tries to cheat the system by attacking a shroom to lower its health, punish them so that it wont award levels to shrooms that eat it
 	var/recovery_cooldown = 0 //So you can't repeatedly revive it during a fight
@@ -30,12 +32,12 @@
 	var/image/cap_living = null //Where we store our cap icons so we dont generate them constantly to update our icon
 	var/image/cap_dead = null
 
-/mob/living/simple_animal/hostile/mushroom/examine()
+/mob/living/simple_animal/hostile/mushroom/examine(mob/user)
 	..()
 	if(health >= maxHealth)
-		usr << "<span class='info'>It looks healthy.</span>"
+		user << "<span class='info'>It looks healthy.</span>"
 	else
-		usr << "<span class='info'>It looks like it's been roughed up.</span>"
+		user << "<span class='info'>It looks like it's been roughed up.</span>"
 
 /mob/living/simple_animal/hostile/mushroom/Life()
 	..()
@@ -122,7 +124,7 @@
 		src.visible_message("<span class='notice'>The [src.name] was bruised!</span>")
 		bruised = 1
 
-/mob/living/simple_animal/hostile/mushroom/attackby(obj/item/I as obj, mob/user as mob)
+/mob/living/simple_animal/hostile/mushroom/attackby(obj/item/I as obj, mob/user as mob, params)
 	if(istype(I, /obj/item/weapon/reagent_containers/food/snacks/grown/mushroom))
 		if(stat == DEAD && !recovery_cooldown)
 			Recover()

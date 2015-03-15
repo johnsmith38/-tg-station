@@ -40,7 +40,7 @@
 		src.colorlist += D
 
 
-/obj/machinery/pdapainter/attackby(var/obj/item/O as obj, var/mob/user as mob)
+/obj/machinery/pdapainter/attackby(var/obj/item/O as obj, var/mob/user as mob, params)
 	if(istype(O, /obj/item/device/pda))
 		if(storedpda)
 			user << "There is already a PDA inside."
@@ -67,9 +67,11 @@
 			return
 		if(!in_range(src, user))
 			return
-
+		if(!storedpda)//is the pda still there?
+			return
 		storedpda.icon_state = P.icon_state
 		storedpda.desc = P.desc
+		ejectpda()
 
 	else
 		user << "<span class='notice'>The [src] is empty.</span>"
@@ -79,6 +81,9 @@
 	set name = "Eject PDA"
 	set category = "Object"
 	set src in oview(1)
+
+	if(usr.stat || usr.restrained() || !usr.canmove)
+		return
 
 	if(storedpda)
 		storedpda.loc = get_turf(src.loc)

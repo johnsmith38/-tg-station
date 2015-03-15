@@ -4,7 +4,8 @@
 	icon_state = "black"
 	item_state = "bl_suit"
 	item_color = "black"
-	desc = "It's a plain jumpsuit. It seems to have a small dial on the wrist."
+	desc = "It's a plain jumpsuit. It has a small dial on the wrist."
+	action_button_name = "Change"
 	origin_tech = "syndicate=3"
 	var/list/clothing_choices = list()
 	var/malfunctioning = 0
@@ -21,7 +22,7 @@
 	return
 
 
-/obj/item/clothing/under/chameleon/attackby(obj/item/clothing/under/U as obj, mob/user as mob)
+/obj/item/clothing/under/chameleon/attackby(obj/item/clothing/under/U as obj, mob/user as mob, params)
 	..()
 	if(istype(U, /obj/item/clothing/under/chameleon))
 		user << "\<span class='notice'>Nothing happens.</span>"
@@ -56,10 +57,7 @@
 			M << "<span class='notice'>Your jumpsuit is functioning normally again.</span>"
 	..()
 
-
-/obj/item/clothing/under/chameleon/verb/change()
-	set name = "Change Color"
-	set category = "Object"
+/obj/item/clothing/under/chameleon/attack_self()
 	set src in usr
 
 	var/obj/item/clothing/under/A

@@ -58,6 +58,8 @@
 				src.used = 1
 				var/client/C = pick(candidates)
 				spawn_antag(C, get_turf(H.loc), href_list["school"])
+				if(H.mind)
+					ticker.mode.update_wiz_icons_added(H.mind)
 			else
 				H << "Unable to reach your apprentice! You can either attack the spellbook with the contract to refund your points, or wait and try again later."
 
@@ -103,6 +105,8 @@
 	M.mind.objectives += new_objective
 	ticker.mode.traitors += M.mind
 	M.mind.special_role = "apprentice"
+	ticker.mode.update_wiz_icons_added(M.mind)
+	M << sound('sound/effects/magic.ogg')
 
 /obj/item/weapon/antag_spawner/contract/equip_antag(mob/target as mob)
 	target.equip_to_slot_or_del(new /obj/item/device/radio/headset(target), slot_ears)
@@ -142,4 +146,4 @@
 	ticker.mode.syndicates += R.mind
 	ticker.mode.update_synd_icons_added(R.mind)
 	R.mind.special_role = "syndicate"
-	R.faction = "syndicate"
+	R.faction = list("syndicate")

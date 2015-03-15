@@ -16,7 +16,7 @@ world/IsBanned(key,address,computer_id)
 				diary << "Ban database connection failure. Admin [ckeytext] not checked"
 				return
 
-			var/DBQuery/query = dbcon.NewQuery("SELECT ckey, ip, computerid, a_ckey, reason, expiration_time, duration, bantime, bantype FROM erro_ban WHERE (ckey = '[ckeytext]') AND (bantype = 'ADMIN_PERMABAN'  OR (bantype = 'ADMIN_TEMPBAN' AND expiration_time > Now())) AND isnull(unbanned)")
+			var/DBQuery/query = dbcon.NewQuery("SELECT ckey, ip, computerid, a_ckey, reason, expiration_time, duration, bantime, bantype FROM [format_table_name("ban")] WHERE (ckey = '[ckeytext]') AND (bantype = 'ADMIN_PERMABAN'  OR (bantype = 'ADMIN_TEMPBAN' AND expiration_time > Now())) AND isnull(unbanned)")
 
 			query.Execute()
 
@@ -42,10 +42,20 @@ world/IsBanned(key,address,computer_id)
 		return ..()
 
 	//Guest Checking
-	if(!guests_allowed && IsGuestKey(key))
-		log_access("Failed Login: [key] - Guests not allowed")
-		message_admins("\blue Failed Login: [key] - Guests not allowed")
-		return list("reason"="guest", "desc"="\nReason: Guests not allowed. Please sign in with a byond account.")
+	if(IsGuestKey(key))
+		if (!guests_allowed)
+			log_access("Failed Login: [key] - Guests not allowed")
+			message_admins("<span class='adminnotice'>Failed Login: [key] - Guests not allowed</span>")
+			return list("reason"="guest", "desc"="\nReason: Guests not allowed. Please sign in with a byond account.")
+		if (config.panic_bunker && dbcon && dbcon.IsConnected())
+			log_access("Failed Login: [key] - Guests not allowed during panic bunker")
+			message_admins("<span class='adminnotice'>Failed Login: [key] - Guests not allowed during panic bunker</span>")
+			return list("reason"="guest", "desc"="\nReason: Sorry but the server is currently not accepting connections from never before seen players or guests. If you have played on this server with a byond account before, please log in to the byond account you have played from.")
+
+	//Population Cap Checking
+	if(config.extreme_popcap && living_player_count() >= config.extreme_popcap && !(ckey(key) in admin_datums))
+		log_access("Failed Login: [key] - Population cap reached")
+		return list("reason"="popcap", "desc"= "\nReason: [config.extreme_popcap_message]")
 
 	if(config.ban_legacy_system)
 
@@ -53,7 +63,7 @@ world/IsBanned(key,address,computer_id)
 		. = CheckBan( ckey(key), computer_id, address )
 		if(.)
 			log_access("Failed Login: [key] [computer_id] [address] - Banned [.["reason"]]")
-			message_admins("\blue Failed Login: [key] id:[computer_id] ip:[address] - Banned [.["reason"]]")
+			message_admins("<span class='adminnotice'>Failed Login: [key] id:[computer_id] ip:[address] - Banned [.["reason"]]</span>")
 			return .
 
 		return ..()	//default pager ban stuff
@@ -80,7 +90,7 @@ world/IsBanned(key,address,computer_id)
 			failedcid = 0
 			cidquery = " OR computerid = '[computer_id]' "
 
-		var/DBQuery/query = dbcon.NewQuery("SELECT ckey, ip, computerid, a_ckey, reason, expiration_time, duration, bantime, bantype FROM erro_ban WHERE (ckey = '[ckeytext]' [ipquery] [cidquery]) AND (bantype = 'PERMABAN'  OR (bantype = 'TEMPBAN' AND expiration_time > Now())) AND isnull(unbanned)")
+		var/DBQuery/query = dbcon.NewQuery("SELECT ckey, ip, computerid, a_ckey, reason, expiration_time, duration, bantime, bantype FROM [format_table_name("ban")] WHERE (ckey = '[ckeytext]' [ipquery] [cidquery]) AND (bantype = 'PERMABAN'  OR (bantype = 'TEMPBAN' AND expiration_time > Now())) AND isnull(unbanned)")
 
 		query.Execute()
 

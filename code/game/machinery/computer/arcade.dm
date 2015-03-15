@@ -23,15 +23,26 @@
 							/obj/item/toy/prize/mauler						= 1,
 							/obj/item/toy/prize/odysseus					= 1,
 							/obj/item/toy/prize/phazon						= 1,
+							/obj/item/toy/prize/reticence					= 1,
 							/obj/item/toy/cards/deck						= 2,
-							/obj/item/toy/nuke								= 2
+							/obj/item/toy/nuke								= 2,
+							/obj/item/toy/minimeteor						= 2,
+							/obj/item/toy/carpplushie						= 2,
+							/obj/item/toy/foamblade							= 2,
+							/obj/item/toy/redbutton							= 2,
+							/obj/item/toy/owl								= 2,
+							/obj/item/toy/griffin							= 2
 							)
 
 /obj/machinery/computer/arcade/New()
 	..()
-	var/choice = pick(typesof(/obj/machinery/computer/arcade) - /obj/machinery/computer/arcade)
-	new choice(loc)
-	qdel(src)
+	// If it's a generic arcade machine, pick a random arcade
+	// circuit board for it and make the new machine
+	if(!circuit)
+		var/choice = pick(typesof(/obj/item/weapon/circuitboard/arcade) - /obj/item/weapon/circuitboard/arcade)
+		var/obj/item/weapon/circuitboard/CB = new choice()
+		new CB.build_path(loc, CB)
+		qdel(src)
 
 /obj/machinery/computer/arcade/proc/prizevend()
 	if(!contents.len)
@@ -84,6 +95,7 @@
 	var/turtle = 0
 
 /obj/machinery/computer/arcade/battle/New()
+	..()
 	var/name_action
 	var/name_part1
 	var/name_part2
@@ -250,8 +262,8 @@
 	return
 
 
-/obj/machinery/computer/arcade/battle/attackby(I as obj, user as mob)
-	if(istype(I, /obj/item/weapon/card/emag) && !emagged)
+/obj/machinery/computer/arcade/battle/emag_act(mob/user as mob)
+	if(!emagged)
 		temp = "If you die in the game, you die for real!"
 		player_hp = 30
 		player_mp = 10
@@ -267,9 +279,6 @@
 
 
 		src.updateUsrDialog()
-	else
-		..()
-	return
 
 
 
@@ -304,6 +313,7 @@
 	var/list/stopblurbs = list()
 
 /obj/machinery/computer/arcade/orion_trail/New()
+	..()
 	// Sets up the main trail
 	stops = list("Pluto","Asteroid Belt","Proxima Centauri","Dead Space","Rigel Prime","Tau Ceti Beta","Black Hole","Space Outpost Beta-9","Orion Prime")
 	stopblurbs = list(
@@ -342,6 +352,8 @@
 	gameover = 0
 
 /obj/machinery/computer/arcade/orion_trail/attack_hand(mob/user as mob)
+	if(..())
+		return
 	if(fuel <= 0 || food <=0 || settlers.len == 0)
 		gameover = 1
 		event = null

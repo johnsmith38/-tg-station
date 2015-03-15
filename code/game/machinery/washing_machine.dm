@@ -1,5 +1,6 @@
 /obj/machinery/washing_machine
 	name = "washing machine"
+	desc = "Gets rid of those pesky bloodstains, or your money back!"
 	icon = 'icons/obj/machines/washing_machine.dmi'
 	icon_state = "wm_10"
 	density = 1
@@ -26,6 +27,9 @@
 	set name = "Start Washing"
 	set category = "Object"
 	set src in oview(1)
+
+	if(usr.stat || usr.restrained() || !usr.canmove)
+		return
 
 	if( state != 4 )
 		usr << "The washing machine cannot run in this state."
@@ -78,61 +82,51 @@
 					new_jumpsuit_item_state = J.item_state
 					new_jumpsuit_name = J.name
 					qdel(J)
-					//world << "DEBUG: YUP! [new_icon_state] and [new_item_state]"
 					break
 				qdel(J)
-			for(var/T in typesof(/obj/item/clothing/gloves))
-				var/obj/item/clothing/gloves/G = new T
-				//world << "DEBUG: [wash_color] == [J.item_color]"
+			for(var/T in typesof(/obj/item/clothing/gloves/color))
+				var/obj/item/clothing/gloves/color/G = new T
 				if(wash_color == G.item_color)
 					new_glove_icon_state = G.icon_state
 					new_glove_item_state = G.item_state
 					new_glove_name = G.name
 					qdel(G)
-					//world << "DEBUG: YUP! [new_icon_state] and [new_item_state]"
 					break
 				qdel(G)
 			for(var/T in typesof(/obj/item/clothing/shoes/sneakers))
 				var/obj/item/clothing/shoes/sneakers/S = new T
-				//world << "DEBUG: [wash_color] == [J.item_color]"
 				if(wash_color == S.item_color)
 					new_shoe_icon_state = S.icon_state
 					new_shoe_name = S.name
 					qdel(S)
-					//world << "DEBUG: YUP! [new_icon_state] and [new_item_state]"
 					break
 				qdel(S)
 			for(var/T in typesof(/obj/item/weapon/bedsheet))
 				var/obj/item/weapon/bedsheet/B = new T
-				//world << "DEBUG: [wash_color] == [J.item_color]"
 				if(wash_color == B.item_color)
 					new_sheet_icon_state = B.icon_state
 					new_sheet_name = B.name
 					qdel(B)
-					//world << "DEBUG: YUP! [new_icon_state] and [new_item_state]"
 					break
 				qdel(B)
 			for(var/T in typesof(/obj/item/clothing/head/soft))
 				var/obj/item/clothing/head/soft/H = new T
-				//world << "DEBUG: [wash_color] == [J.item_color]"
 				if(wash_color == H.item_color)
 					new_softcap_icon_state = H.icon_state
 					new_softcap_name = H.name
 					qdel(H)
-					//world << "DEBUG: YUP! [new_icon_state] and [new_item_state]"
 					break
 				qdel(H)
 			if(new_jumpsuit_icon_state && new_jumpsuit_item_state && new_jumpsuit_name)
 				for(var/obj/item/clothing/under/color/J in contents)
-					//world << "DEBUG: YUP! FOUND IT!"
 					J.item_state = new_jumpsuit_item_state
 					J.icon_state = new_jumpsuit_icon_state
 					J.item_color = wash_color
 					J.name = new_jumpsuit_name
 					J.desc = new_desc
+					J.suit_color = wash_color
 			if(new_glove_icon_state && new_glove_item_state && new_glove_name)
-				for(var/obj/item/clothing/gloves/G in contents)
-					//world << "DEBUG: YUP! FOUND IT!"
+				for(var/obj/item/clothing/gloves/color/G in contents)
 					G.item_state = new_glove_item_state
 					G.icon_state = new_glove_icon_state
 					G.item_color = wash_color
@@ -140,25 +134,22 @@
 					G.desc = new_desc
 			if(new_shoe_icon_state && new_shoe_name)
 				for(var/obj/item/clothing/shoes/sneakers/S in contents)
-					//world << "DEBUG: YUP! FOUND IT!"
 					if (S.chained == 1)
 						S.chained = 0
 						S.slowdown = SHOES_SLOWDOWN
-						new /obj/item/weapon/handcuffs( src )
+						new /obj/item/weapon/restraints/handcuffs( src )
 					S.icon_state = new_shoe_icon_state
 					S.item_color = wash_color
 					S.name = new_shoe_name
 					S.desc = new_desc
 			if(new_sheet_icon_state && new_sheet_name)
 				for(var/obj/item/weapon/bedsheet/B in contents)
-					//world << "DEBUG: YUP! FOUND IT!"
 					B.icon_state = new_sheet_icon_state
 					B.item_color = wash_color
 					B.name = new_sheet_name
 					B.desc = new_desc
 			if(new_softcap_icon_state && new_softcap_name)
 				for(var/obj/item/clothing/head/soft/H in contents)
-					//world << "DEBUG: YUP! FOUND IT!"
 					H.icon_state = new_softcap_icon_state
 					H.item_color = wash_color
 					H.name = new_softcap_name
@@ -187,7 +178,7 @@
 /obj/machinery/washing_machine/update_icon()
 	icon_state = "wm_[state][panel]"
 
-/obj/machinery/washing_machine/attackby(obj/item/weapon/W as obj, mob/user as mob)
+/obj/machinery/washing_machine/attackby(obj/item/weapon/W as obj, mob/user as mob, params)
 	/*if(istype(W,/obj/item/weapon/screwdriver))
 		panel = !panel
 		user << "\blue you [panel ? "open" : "close"] the [src]'s maintenance panel"*/
@@ -266,9 +257,9 @@
 				W.loc = src
 				state = 3
 			else
-				user << "\blue You can't put the item in right now."
+				user << "<span class='notice'>You can't put the item in right now.</span>"
 		else
-			user << "\blue The washing machine is full."
+			user << "<span class='notice'>The washing machine is full.</span>"
 	else
 		..()
 	update_icon()
@@ -290,7 +281,7 @@
 			crayon = null
 			state = 1
 		if(5)
-			user << "\red The [src] is busy."
+			user << "<span class='danger'>The [src] is busy.</span>"
 		if(6)
 			state = 7
 		if(7)

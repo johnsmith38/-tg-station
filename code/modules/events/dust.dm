@@ -4,10 +4,13 @@
 	weight = 300
 	max_occurrences = 1000
 	earliest_start = 0
+	alertadmins = 0
+
 
 /datum/round_event/meteor_wave/dust
 	startWhen		= 1
 	endWhen			= 2
+	announceWhen	= 0
 
 /datum/round_event/meteor_wave/dust/announce()
 	return

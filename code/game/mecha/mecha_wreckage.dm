@@ -15,7 +15,7 @@
 	var/list/crowbar_salvage = list()
 	var/salvage_num = 5
 
-/obj/structure/mecha_wreckage/attackby(obj/item/I, mob/user)
+/obj/structure/mecha_wreckage/attackby(obj/item/I, mob/user, params)
 	if(istype(I, /obj/item/weapon/weldingtool))
 		if(salvage_num <= 0)
 			user << "<span class='notice'>You don't see anything that can be cut with [I].</span>"
@@ -32,7 +32,6 @@
 			else
 				user << "<span class='notice'>You failed to salvage anything valuable from [src].</span>"
 		else
-			user << "<span class='notice'>You need more welding fuel to complete this task.</span>"
 			return
 
 	if(istype(I, /obj/item/weapon/wirecutters))

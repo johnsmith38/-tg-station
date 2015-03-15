@@ -112,14 +112,8 @@
 	return
 
 
-/obj/machinery/power/am_control_unit/ex_act(severity)
-	switch(severity)
-		if(1.0)
-			stability -= 60
-		if(2.0)
-			stability -= 40
-		if(3.0)
-			stability -= 20
+/obj/machinery/power/am_control_unit/ex_act(severity, target)
+	stability -= (80 - (severity * 20))
 	check_stability()
 	return
 
@@ -143,7 +137,7 @@
 	//No other icons for it atm
 
 
-/obj/machinery/power/am_control_unit/attackby(obj/item/W, mob/user)
+/obj/machinery/power/am_control_unit/attackby(obj/item/W, mob/user, params)
 	if(!istype(W) || !user) return
 	if(istype(W, /obj/item/weapon/wrench))
 		if(!anchored)
@@ -161,12 +155,12 @@
 			src.anchored = 0
 			disconnect_from_network()
 		else
-			user << "\red Once bolted and linked to a shielding unit it the [src.name] is unable to be moved!"
+			user << "<span class='danger'>Once bolted and linked to a shielding unit it the [src.name] is unable to be moved!</span>"
 		return
 
 	if(istype(W, /obj/item/weapon/am_containment))
 		if(fueljar)
-			user << "\red There is already a [fueljar] inside!"
+			user << "<span class='danger'>There is already a [fueljar] inside!</span>"
 			return
 		fueljar = W
 		W.loc = src

@@ -55,8 +55,7 @@
 /obj/structure/mineral_door/attack_hand(mob/user)
 	return TryToSwitchState(user)
 
-/obj/structure/mineral_door/CanPass(atom/movable/mover, turf/target, height=0, air_group=0)
-	if(air_group) return 0
+/obj/structure/mineral_door/CanPass(atom/movable/mover, turf/target, height=0)
 	if(istype(mover, /obj/effect/beam))
 		return !opacity
 	return !density
@@ -123,7 +122,7 @@
 	else
 		icon_state = mineralType
 
-/obj/structure/mineral_door/attackby(obj/item/weapon/W, mob/user)
+/obj/structure/mineral_door/attackby(obj/item/weapon/W, mob/user, params)
 	if(istype(W,/obj/item/weapon/pickaxe))
 		var/obj/item/weapon/pickaxe/digTool = W
 		user << "You start digging the [name]."
@@ -218,7 +217,7 @@
 /obj/structure/mineral_door/transparent/plasma
 	mineralType = "plasma"
 
-/obj/structure/mineral_door/transparent/plasma/attackby(obj/item/weapon/W, mob/user)
+/obj/structure/mineral_door/transparent/plasma/attackby(obj/item/weapon/W, mob/user, params)
 	if(is_hot(W))
 		message_admins("Plasma mineral door ignited by [key_name(user, user.client)](<A HREF='?_src_=holder;adminmoreinfo=\ref[user]'>?</A>) in ([x],[y],[z] - <A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[x];Y=[y];Z=[z]'>JMP</a>)",0,1)
 		log_game("Plasma mineral door ignited by [user.ckey]([user]) in ([x],[y],[z])")
@@ -249,25 +248,3 @@
 		for(var/i = 1, i <= oreAmount, i++)
 			new/obj/item/stack/sheet/mineral/wood(get_turf(src))
 	qdel(src)
-
-/obj/structure/mineral_door/resin
-	mineralType = "resin"
-	hardness = 1
-	close_delay = 100
-	openSound = 'sound/effects/attackblob.ogg'
-	closeSound = 'sound/effects/attackblob.ogg'
-
-/obj/structure/mineral_door/resin/TryToSwitchState(atom/user)
-	if(isalien(user))
-		return ..()
-
-/obj/structure/mineral_door/resin/Dismantle(devastated = 0)
-	qdel(src)
-
-/obj/structure/mineral_door/resin/CheckHardness()
-	playsound(loc, 'sound/effects/attackblob.ogg', 100, 1)
-	..()
-
-/obj/structure/mineral_door/resin/BlockSuperconductivity()
-	if(opacity)
-		return 1

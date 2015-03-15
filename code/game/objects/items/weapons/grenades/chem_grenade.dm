@@ -1,10 +1,10 @@
-#define EMPTY 0
-#define WIRED 1
-#define READY 2
+#define EMPTY 1
+#define WIRED 2
+#define READY 3
 
 /obj/item/weapon/grenade/chem_grenade
 	name = "grenade"
-	desc = "A do it yourself grenade casing!"
+	desc = "A custom made grenade."
 	icon_state = "chemg"
 	item_state = "flashbang"
 	w_class = 2
@@ -18,11 +18,10 @@
 
 /obj/item/weapon/grenade/chem_grenade/New()
 	create_reagents(1000)
-	name = "[initial(name)] casing" // By adding the " casing" part here we can use initial(name) to get the final name, making it nice to say "large grenade" when it is a large grenade.
+	stage_change() // If no argument is set, it will change the stage to the current stage, useful for stock grenades that start READY.
 
 
-/obj/item/weapon/grenade/chem_grenade/examine()
-	set src in usr
+/obj/item/weapon/grenade/chem_grenade/examine(mob/user)
 	display_timer = (stage == READY && !nadeassembly)	//show/hide the timer based on assembly state
 	..()
 
@@ -37,6 +36,7 @@
 			message_admins("[key_name(usr)]<A HREF='?_src_=holder;adminmoreinfo=\ref[usr]'>?</A> has primed a [name] for detonation at <A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[bombturf.x];Y=[bombturf.y];Z=[bombturf.z]'>[A.name] (JMP)</a>.")
 			log_game("[key_name(usr)] has primed a [name] for detonation at [A.name] ([bombturf.x],[bombturf.y],[bombturf.z]).")
 			user << "<span class='warning'>You prime the [name]! [det_time / 10] second\s!</span>"
+			playsound(user.loc, 'sound/weapons/armbomb.ogg', 60, 1)
 			active = 1
 			icon_state = initial(icon_state) + "_active"
 			if(iscarbon(user))
@@ -47,7 +47,7 @@
 				prime()
 
 
-/obj/item/weapon/grenade/chem_grenade/attackby(obj/item/I, mob/user)
+/obj/item/weapon/grenade/chem_grenade/attackby(obj/item/I, mob/user, params)
 	if(istype(I, /obj/item/weapon/screwdriver))
 		if(stage == WIRED)
 			if(beakers.len)
@@ -77,8 +77,6 @@
 
 	else if(stage == EMPTY && istype(I, /obj/item/device/assembly_holder))
 		var/obj/item/device/assembly_holder/A = I
-		if(!A.secured)
-			return
 		if(isigniter(A.a_left) == isigniter(A.a_right))	//Check if either part of the assembly has an igniter, but if both parts are igniters, then fuck it
 			return
 
@@ -93,10 +91,13 @@
 
 	else if(stage == EMPTY && istype(I, /obj/item/stack/cable_coil))
 		var/obj/item/stack/cable_coil/C = I
-		C.use(1)
-		det_time = 50 // In case the cable_coil was removed and readded.
-		stage_change(WIRED)
-		user << "<span class='notice'>You rig the [initial(name)] assembly.</span>"
+		if (C.use(1))
+			det_time = 50 // In case the cable_coil was removed and readded.
+			stage_change(WIRED)
+			user << "<span class='notice'>You rig the [initial(name)] assembly.</span>"
+		else
+			user << "<span class='warning'>You need one length of coil to wire the assembly.</span>"
+			return
 
 	else if(stage == READY && istype(I, /obj/item/weapon/wirecutters))
 		stage_change(WIRED)
@@ -120,18 +121,19 @@
 
 
 /obj/item/weapon/grenade/chem_grenade/proc/stage_change(var/N)
-	stage = N
-	if (stage == EMPTY)
+	if(N)
+		stage = N
+	if(stage == EMPTY)
 		name = "[initial(name)] casing"
-		desc = initial(desc)
+		desc = "A do it yourself [initial(name)] casing!"
 		icon_state = initial(icon_state)
-	else if (stage == WIRED)
+	else if(stage == WIRED)
 		name = "unsecured [initial(name)]"
 		desc = "An unsecured [initial(name)] assembly."
 		icon_state = "[initial(icon_state)]_ass"
-	else if (stage == READY)
+	else if(stage == READY)
 		name = initial(name)
-		desc = "A custom made [initial(name)]."
+		desc = initial(desc)
 		icon_state = "[initial(icon_state)]_locked"
 
 
@@ -150,12 +152,6 @@
 /obj/item/weapon/grenade/chem_grenade/on_found(mob/finder)
 	if(nadeassembly)
 		nadeassembly.on_found(finder)
-
-/obj/item/weapon/grenade/chem_grenade/hear_talk(mob/living/M, msg)
-	if(nadeassembly)
-		nadeassembly.hear_talk(M, msg)
-
-
 
 /obj/item/weapon/grenade/chem_grenade/prime()
 	if(stage != READY)
@@ -190,23 +186,47 @@
 		steam.attach(src)
 		steam.start()
 
-	for(var/atom/A in view(affected_area, loc))
-		if(A == src)
-			continue
-		reagents.reaction(A, 1, 10)
+	var/list/viewable = view(affected_area, loc)
+	var/list/accessible = can_flood_from(loc, affected_area)
+	var/list/reactable = accessible
+	var/mycontents = GetAllContents()
+	for(var/turf/T in accessible)
+		for(var/atom/A in T.GetAllContents())
+			if(A in mycontents) continue
+			if(!(A in viewable)) continue
+			reactable |= A
+	var/fraction = (reagents.total_volume/reactable.len) - reagents.total_volume
+	for(var/atom/A in reactable)
+		reagents.reaction(A, TOUCH, fraction)
 
 	invisibility = INVISIBILITY_MAXIMUM		//Why am i doing this?
 	spawn(50)		   //To make sure all reagents can work
 		qdel(src)	   //correctly before deleting the grenade.
 
 /obj/item/weapon/grenade/chem_grenade/proc/mix_reagents()
+	var/total_temp
 	for(var/obj/item/weapon/reagent_containers/glass/G in beakers)
 		G.reagents.trans_to(src, G.reagents.total_volume)
+		total_temp += G.reagents.chem_temp
+	reagents.chem_temp = total_temp
+
+/obj/item/weapon/grenade/chem_grenade/proc/can_flood_from(myloc, maxrange)
+	var/list/reachable = list(myloc)
+	for(var/i=1; i<=maxrange; i++)
+		for(var/turf/T in (orange(i, myloc) - orange(i-1, myloc)))
+			if(T in reachable) continue
+			for(var/turf/NT in orange(1, T))
+				if(!(NT in reachable)) continue
+				if(!(get_dir(T,NT) in cardinal)) continue
+				if(!NT.CanAtmosPass(T)) continue
+				reachable |= T
+				break
+	return reachable
 
 //Large chem grenades accept slime cores and use the appropriately.
 /obj/item/weapon/grenade/chem_grenade/large
 	name = "large grenade"
-	desc = "An oversized grenade casing."
+	desc = "A custom made large grenade."
 	icon_state = "large_grenade"
 	allowed_containers = list(/obj/item/weapon/reagent_containers/glass,/obj/item/weapon/reagent_containers/food/condiment,
 								/obj/item/weapon/reagent_containers/food/drinks)
@@ -230,7 +250,7 @@
 	//I tried to just put it in the allowed_containers list but
 	//if you do that it must have reagents.  If you're going to
 	//make a special case you might as well do it explicitly. -Sayu
-/obj/item/weapon/grenade/chem_grenade/large/attackby(obj/item/I, mob/user)
+/obj/item/weapon/grenade/chem_grenade/large/attackby(obj/item/I, mob/user, params)
 	if(istype(I, /obj/item/slime_extract) && stage == WIRED)
 		user << "<span class='notice'>You add [I] to the [initial(name)] assembly.</span>"
 		user.drop_item()
@@ -245,18 +265,17 @@
 	desc = "Used for emergency sealing of air breaches."
 	stage = READY
 
-	New()
-		..()
-		var/obj/item/weapon/reagent_containers/glass/beaker/B1 = new(src)
-		var/obj/item/weapon/reagent_containers/glass/beaker/B2 = new(src)
+/obj/item/weapon/grenade/chem_grenade/metalfoam/New()
+	..()
+	var/obj/item/weapon/reagent_containers/glass/beaker/B1 = new(src)
+	var/obj/item/weapon/reagent_containers/glass/beaker/B2 = new(src)
 
-		B1.reagents.add_reagent("aluminium", 30)
-		B2.reagents.add_reagent("foaming_agent", 10)
-		B2.reagents.add_reagent("pacid", 10)
+	B1.reagents.add_reagent("aluminium", 30)
+	B2.reagents.add_reagent("foaming_agent", 10)
+	B2.reagents.add_reagent("facid", 10)
 
-		beakers += B1
-		beakers += B2
-		icon_state = "grenade"
+	beakers += B1
+	beakers += B2
 
 
 /obj/item/weapon/grenade/chem_grenade/incendiary
@@ -264,18 +283,17 @@
 	desc = "Used for clearing rooms of living things."
 	stage = READY
 
-	New()
-		..()
-		var/obj/item/weapon/reagent_containers/glass/beaker/B1 = new(src)
-		var/obj/item/weapon/reagent_containers/glass/beaker/B2 = new(src)
+/obj/item/weapon/grenade/chem_grenade/incendiary/New()
+	..()
+	var/obj/item/weapon/reagent_containers/glass/beaker/B1 = new(src)
+	var/obj/item/weapon/reagent_containers/glass/beaker/B2 = new(src)
 
-		B1.reagents.add_reagent("aluminium", 25)
-		B2.reagents.add_reagent("plasma", 25)
-		B2.reagents.add_reagent("sacid", 25)
+	B1.reagents.add_reagent("aluminium", 25)
+	B2.reagents.add_reagent("plasma", 25)
+	B2.reagents.add_reagent("sacid", 25)
 
-		beakers += B1
-		beakers += B2
-		icon_state = "grenade"
+	beakers += B1
+	beakers += B2
 
 
 /obj/item/weapon/grenade/chem_grenade/antiweed
@@ -283,19 +301,18 @@
 	desc = "Used for purging large areas of invasive plant species. Contents under pressure. Do not directly inhale contents."
 	stage = READY
 
-	New()
-		..()
-		var/obj/item/weapon/reagent_containers/glass/beaker/B1 = new(src)
-		var/obj/item/weapon/reagent_containers/glass/beaker/B2 = new(src)
+/obj/item/weapon/grenade/chem_grenade/antiweed/New()
+	..()
+	var/obj/item/weapon/reagent_containers/glass/beaker/B1 = new(src)
+	var/obj/item/weapon/reagent_containers/glass/beaker/B2 = new(src)
 
-		B1.reagents.add_reagent("plantbgone", 25)
-		B1.reagents.add_reagent("potassium", 25)
-		B2.reagents.add_reagent("phosphorus", 25)
-		B2.reagents.add_reagent("sugar", 25)
+	B1.reagents.add_reagent("plantbgone", 25)
+	B1.reagents.add_reagent("potassium", 25)
+	B2.reagents.add_reagent("phosphorus", 25)
+	B2.reagents.add_reagent("sugar", 25)
 
-		beakers += B1
-		beakers += B2
-		icon_state = "grenade"
+	beakers += B1
+	beakers += B2
 
 
 /obj/item/weapon/grenade/chem_grenade/cleaner
@@ -303,18 +320,17 @@
 	desc = "BLAM!-brand foaming space cleaner. In a special applicator for rapid cleaning of wide areas."
 	stage = READY
 
-	New()
-		..()
-		var/obj/item/weapon/reagent_containers/glass/beaker/B1 = new(src)
-		var/obj/item/weapon/reagent_containers/glass/beaker/B2 = new(src)
+/obj/item/weapon/grenade/chem_grenade/cleaner/New()
+	..()
+	var/obj/item/weapon/reagent_containers/glass/beaker/B1 = new(src)
+	var/obj/item/weapon/reagent_containers/glass/beaker/B2 = new(src)
 
-		B1.reagents.add_reagent("fluorosurfactant", 40)
-		B2.reagents.add_reagent("water", 40)
-		B2.reagents.add_reagent("cleaner", 10)
+	B1.reagents.add_reagent("fluorosurfactant", 40)
+	B2.reagents.add_reagent("water", 40)
+	B2.reagents.add_reagent("cleaner", 10)
 
-		beakers += B1
-		beakers += B2
-		icon_state = "grenade"
+	beakers += B1
+	beakers += B2
 
 
 /obj/item/weapon/grenade/chem_grenade/teargas
@@ -322,19 +338,55 @@
 	desc = "Used for nonlethal riot control. Contents under pressure. Do not directly inhale contents."
 	stage = READY
 
-	New()
-		..()
-		var/obj/item/weapon/reagent_containers/glass/beaker/B1 = new(src)
-		var/obj/item/weapon/reagent_containers/glass/beaker/B2 = new(src)
+/obj/item/weapon/grenade/chem_grenade/teargas/New()
+	..()
+	var/obj/item/weapon/reagent_containers/glass/beaker/B1 = new(src)
+	var/obj/item/weapon/reagent_containers/glass/beaker/B2 = new(src)
 
-		B1.reagents.add_reagent("condensedcapsaicin", 25)
-		B1.reagents.add_reagent("potassium", 25)
-		B2.reagents.add_reagent("phosphorus", 25)
-		B2.reagents.add_reagent("sugar", 25)
+	B1.reagents.add_reagent("condensedcapsaicin", 25)
+	B1.reagents.add_reagent("potassium", 25)
+	B2.reagents.add_reagent("phosphorus", 25)
+	B2.reagents.add_reagent("sugar", 25)
 
-		beakers += B1
-		beakers += B2
-		icon_state = "grenade"
+	beakers += B1
+	beakers += B2
+
+
+/obj/item/weapon/grenade/chem_grenade/facid
+	name = "acid grenade"
+	desc = "Used for melting armoured opponents."
+	stage = READY
+
+/obj/item/weapon/grenade/chem_grenade/facid/New()
+	..()
+	var/obj/item/weapon/reagent_containers/glass/beaker/B1 = new(src)
+	var/obj/item/weapon/reagent_containers/glass/beaker/B2 = new(src)
+
+	B1.reagents.add_reagent("facid", 25)
+	B1.reagents.add_reagent("potassium", 25)
+	B2.reagents.add_reagent("phosphorus", 25)
+	B2.reagents.add_reagent("sugar", 25)
+
+	beakers += B1
+	beakers += B2
+
+/obj/item/weapon/grenade/chem_grenade/colorful
+	name = "colorful grenade"
+	desc = "Used for wide scale painting projects."
+	stage = READY
+
+/obj/item/weapon/grenade/chem_grenade/colorful/New()
+	..()
+	var/obj/item/weapon/reagent_containers/glass/beaker/B1 = new(src)
+	var/obj/item/weapon/reagent_containers/glass/beaker/B2 = new(src)
+
+	B1.reagents.add_reagent("colorful_reagent", 25)
+	B1.reagents.add_reagent("potassium", 25)
+	B2.reagents.add_reagent("phosphorus", 25)
+	B2.reagents.add_reagent("sugar", 25)
+
+	beakers += B1
+	beakers += B2
 
 #undef EMPTY
 #undef WIRED

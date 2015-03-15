@@ -13,7 +13,7 @@
 	if(findtext(act,"s",-1) && !findtext(act,"_",-2))//Removes ending s's unless they are prefixed with a '_'
 		act = copytext(act,1,length(act))
 
-	var/muzzled = (src.wear_mask && istype(src.wear_mask, /obj/item/clothing/mask/muzzle))
+	var/muzzled = is_muzzled()
 	//var/m_type = 1
 
 	switch(act)//Even carbon organisms want it alphabetically ordered..
@@ -188,13 +188,11 @@
 		for(var/mob/M in dead_mob_list)
 			if(!M.client || istype(M, /mob/new_player))
 				continue //skip monkeys, leavers and new players
-			if(M.stat == DEAD && (M.client.prefs.toggles & CHAT_GHOSTSIGHT) && !(M in viewers(src,null)))
+			if(M.stat == DEAD && M.client && (M.client.prefs.toggles & CHAT_GHOSTSIGHT) && !(M in viewers(src,null)))
 				M.show_message(message)
 
 
 		if (m_type & 1)
-			for (var/mob/O in viewers(src, null))
-				O.show_message(message, m_type)
+			visible_message(message)
 		else if (m_type & 2)
-			for (var/mob/O in hearers(src.loc, null))
-				O.show_message(message, m_type)
+			audible_message(message)

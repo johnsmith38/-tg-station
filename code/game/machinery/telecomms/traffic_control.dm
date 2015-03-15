@@ -190,7 +190,7 @@
 		return
 
 	if(!auth && !issilicon(usr) && !emagged)
-		usr << "\red ACCESS DENIED."
+		usr << "<span class='danger'>ACCESS DENIED.</span>"
 		return
 
 	if(href_list["viewserver"])
@@ -256,7 +256,7 @@
 
 	if(href_list["network"])
 
-		var/newnet = input(usr, "Which network do you want to view?", "Comm Monitor", network) as null|text
+		var/newnet = stripped_input(usr, "Which network do you want to view?", "Comm Monitor", network)
 
 		if(newnet && canAccess(usr))
 			if(length(newnet) > 15)
@@ -273,15 +273,16 @@
 	updateUsrDialog()
 	return
 
-/obj/machinery/computer/telecomms/traffic/attackby(var/obj/item/weapon/D as obj, var/mob/user as mob)
-	if(istype(D, /obj/item/weapon/card/emag) && !emagged)
-		playsound(src.loc, 'sound/effects/sparks4.ogg', 75, 1)
-		emagged = 1
-		user << "\blue You you disable the security protocols"
-	else
-		..()
+/obj/machinery/computer/telecomms/traffic/attackby()
+	..()
 	src.updateUsrDialog()
 	return
+
+/obj/machinery/computer/telecomms/traffic/emag_act(mob/user as mob)
+	if(!emagged)
+		playsound(src.loc, 'sound/effects/sparks4.ogg', 75, 1)
+		emagged = 1
+		user << "<span class='notice'>You you disable the security protocols.</span>"
 
 /obj/machinery/computer/telecomms/traffic/proc/canAccess(var/mob/user)
 	if(issilicon(user) || in_range(user, src))

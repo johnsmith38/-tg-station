@@ -94,7 +94,7 @@ field_generator power level display
 		return
 
 
-/obj/machinery/field/generator/attackby(obj/item/W, mob/user)
+/obj/machinery/field/generator/attackby(obj/item/W, mob/user, params)
 	if(active)
 		user << "The [src] needs to be off."
 		return
@@ -115,19 +115,19 @@ field_generator power level display
 					"You hear ratchet")
 				src.anchored = 0
 			if(2)
-				user << "\red The [src.name] needs to be unwelded from the floor."
+				user << "<span class='danger'>The [src.name] needs to be unwelded from the floor.</span>"
 				return
 	else if(istype(W, /obj/item/weapon/weldingtool))
 		var/obj/item/weapon/weldingtool/WT = W
 		switch(state)
 			if(0)
-				user << "\red The [src.name] needs to be wrenched to the floor."
+				user << "<span class='danger'>The [src.name] needs to be wrenched to the floor.</span>"
 				return
 			if(1)
 				if (WT.remove_fuel(0,user))
 					playsound(src.loc, 'sound/items/Welder2.ogg', 50, 1)
 					user.visible_message("[user.name] starts to weld the [src.name] to the floor.", \
-						"You start to weld the [src] to the floor.", \
+						"You start to weld \the [src] to the floor.", \
 						"You hear welding")
 					if (do_after(user,20))
 						if(!src || !WT.isOn()) return
@@ -139,12 +139,12 @@ field_generator power level display
 				if (WT.remove_fuel(0,user))
 					playsound(src.loc, 'sound/items/Welder2.ogg', 50, 1)
 					user.visible_message("[user.name] starts to cut the [src.name] free from the floor.", \
-						"You start to cut the [src] free from the floor.", \
+						"You start to cut \the [src] free from the floor.", \
 						"You hear welding")
 					if (do_after(user,20))
 						if(!src || !WT.isOn()) return
 						state = 1
-						user << "You cut the [src] free from the floor."
+						user << "You cut \the [src] free from the floor."
 				else
 					return
 	else
@@ -211,8 +211,7 @@ field_generator power level display
 	if(draw_power(round(power_draw/2,1)))
 		return 1
 	else
-		for(var/mob/M in viewers(src))
-			M.show_message("\red The [src.name] shuts down!")
+		visible_message("<span class='danger'>The [src.name] shuts down!</span>", "You hear something shutting down")
 		turn_off()
 		investigate_log("ran out of power and <font color='red'>deactivated</font>","singulo")
 		src.power = 0
@@ -345,7 +344,7 @@ field_generator power level display
 	//I want to avoid using global variables.
 	spawn(1)
 		var/temp = 1 //stops spam
-		for(var/obj/machinery/singularity/O in world)
+		for(var/obj/singularity/O in world)
 			if(O.last_warning && temp)
 				if((world.time - O.last_warning) > 50) //to stop message-spam
 					temp = 0
@@ -354,5 +353,9 @@ field_generator power level display
 			O.last_warning = world.time
 
 /obj/machinery/field/generator/shock(mob/living/user as mob)
+	if(fields.len)
+		..()
+
+/obj/machinery/field/generator/bump(atom/movable/AM as mob|obj)
 	if(fields.len)
 		..()

@@ -17,6 +17,12 @@ datum/objective_item/steal/caplaser
 	difficulty = 5
 	excludefromjob = list("Captain")
 
+datum/objective_item/steal/hoslaser
+	name = "the head of security's recreated antique laser gun"
+	targetitem = /obj/item/weapon/gun/energy/gun/hos
+	difficulty = 10
+	excludefromjob = list("Head Of Security")
+
 datum/objective_item/steal/handtele
 	name = "a hand teleporter"
 	targetitem = /obj/item/weapon/hand_tele
@@ -27,11 +33,13 @@ datum/objective_item/steal/rcd
 	name = "a rapid-construction-device"
 	targetitem = /obj/item/weapon/rcd
 	difficulty = 3
+	excludefromjob = list("Chief Engineer", "Quartermaster", "Cargo Technician")
 
 datum/objective_item/steal/jetpack
 	name = "a jetpack"
 	targetitem = /obj/item/weapon/tank/jetpack
 	difficulty = 3
+	excludefromjob = list("Chief Engineer")
 
 datum/objective_item/steal/magboots
 	name = "the chief engineer's advanced magnetic boots"
@@ -43,7 +51,7 @@ datum/objective_item/steal/corgimeat
 	name = "a piece of corgi meat"
 	targetitem = /obj/item/weapon/reagent_containers/food/snacks/meat/corgi
 	difficulty = 5
-	excludefromjob = list("Head of Personnel") //>hurting your little buddy ever
+	excludefromjob = list("Head of Personnel", "Quartermaster", "Cargo Technician") //>hurting your little buddy ever
 
 datum/objective_item/steal/capmedal
 	name = "the medal of captaincy"
@@ -53,7 +61,7 @@ datum/objective_item/steal/capmedal
 
 datum/objective_item/steal/hypo
 	name = "the hypospray"
-	targetitem = /obj/item/weapon/reagent_containers/hypospray
+	targetitem = /obj/item/weapon/reagent_containers/hypospray/CMO
 	difficulty = 5
 	excludefromjob = list("Chief Medical Officer")
 
@@ -76,7 +84,7 @@ datum/objective_item/steal/reactive
 	excludefromjob = list("Research Director")
 
 datum/objective_item/steal/documents
-	name = "a set of secret documents"
+	name = "any set of secret documents of any organization"
 	targetitem = /obj/item/documents //Any set of secret documents. Doesn't have to be NT's
 	difficulty = 5
 
@@ -107,13 +115,13 @@ datum/objective_item/functionalai/check_special_completion(var/obj/item/device/a
 
 datum/objective_item/steal/blueprints
 	name = "the station blueprints"
-	targetitem = /obj/item/blueprints
+	targetitem = /obj/item/areaeditor/blueprints
 	difficulty = 10
 	excludefromjob = list("Chief Engineer")
 	altitems = list(/obj/item/weapon/photo)
 
 datum/objective_item/blueprints/check_special_completion(var/obj/item/I)
-	if(istype(I, /obj/item/blueprints))
+	if(istype(I, /obj/item/areaeditor/blueprints))
 		return 1
 	if(istype(I, /obj/item/weapon/photo))
 		var/obj/item/weapon/photo/P = I
@@ -156,7 +164,7 @@ datum/objective_item/special/aegun
 
 datum/objective_item/special/ddrill
 	name = "a diamond drill"
-	targetitem = /obj/item/weapon/pickaxe/diamonddrill
+	targetitem = /obj/item/weapon/pickaxe/drill/diamonddrill
 	difficulty = 10
 
 datum/objective_item/special/boh

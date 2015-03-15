@@ -110,8 +110,18 @@ proc/isobserver(A)
 		return 1
 	return 0
 
+proc/isnewplayer(A)
+	if(istype(A, /mob/new_player))
+		return 1
+	return 0
+
 proc/isovermind(A)
 	if(istype(A, /mob/camera/blob))
+		return 1
+	return 0
+
+proc/isdrone(A)
+	if(istype(A, /mob/living/simple_animal/drone))
 		return 1
 	return 0
 
@@ -153,14 +163,14 @@ proc/isorgan(A)
 	if(prob(probability))
 		return zone
 
-	var/t = rand(1, 17) // randomly pick a different zone, or maybe the same one
+	var/t = rand(1, 18) // randomly pick a different zone, or maybe the same one
 	switch(t)
 		if(1)		 return "head"
 		if(2)		 return "chest"
 		if(3 to 6)	 return "l_arm"
 		if(7 to 10)	 return "r_arm"
-		if(10 to 13) return "l_leg"
-		if(14 to 17) return "r_leg"
+		if(11 to 14) return "l_leg"
+		if(15 to 18) return "r_leg"
 
 	return zone
 
@@ -172,7 +182,7 @@ proc/isorgan(A)
 		return 0
 
 /proc/stars(n, pr)
-	n = html_decode(n)
+	n = strip_html_properly(n)
 	if (pr == null)
 		pr = 25
 	if (pr <= 0)
@@ -193,6 +203,29 @@ proc/isorgan(A)
 		p++
 	return sanitize(t)
 
+proc/slur(n)
+	var/phrase = html_decode(n)
+	var/leng = lentext(phrase)
+	var/counter=lentext(phrase)
+	var/newphrase=""
+	var/newletter=""
+	while(counter>=1)
+		newletter=copytext(phrase,(leng-counter)+1,(leng-counter)+2)
+		if(rand(1,3)==3)
+			if(lowertext(newletter)=="o")	newletter="u"
+			if(lowertext(newletter)=="s")	newletter="ch"
+			if(lowertext(newletter)=="a")	newletter="ah"
+			if(lowertext(newletter)=="u")	newletter="oo"
+			if(lowertext(newletter)=="c")	newletter="k"
+		if(rand(1,20)==20)
+			if(newletter==" ")	newletter="...huuuhhh..."
+			if(newletter==".")	newletter=" *BURP*."
+		switch(rand(1,20))
+			if(1)	newletter+="'"
+			if(10)	newletter+="[newletter]"
+			if(20)	newletter+="[newletter][newletter]"
+		newphrase+="[newletter]";counter-=1
+	return newphrase
 
 /proc/stutter(n)
 	var/te = html_decode(n)
@@ -361,10 +394,9 @@ It's fairly easy to fix if dealing with single letters but not so much with comp
 				hud_used.action_intent.icon_state = "help"
 
 proc/is_blind(A)
-	if(istype(A, /mob/living/carbon))
-		var/mob/living/carbon/C = A
-		if(C.blinded != null)
-			return 1
+	if(ismob(A))
+		var/mob/B = A
+		return	B.eye_blind
 	return 0
 
 proc/is_special_character(mob/M) // returns 1 for special characters and 2 for heroes of gamemode //moved out of admins.dm because things other than admin procs were calling this.
@@ -408,7 +440,7 @@ proc/is_special_character(mob/M) // returns 1 for special characters and 2 for h
 				if(M.mind in ticker.mode.wizards)
 					return 2
 			if("monkey")
-				if(M.viruses && (locate(/datum/disease/jungle_fever) in M.viruses))
+				if(M.viruses && (locate(/datum/disease/transformation/jungle_fever) in M.viruses))
 					return 2
 		return 1
 	return 0
@@ -419,6 +451,16 @@ proc/is_special_character(mob/M) // returns 1 for special characters and 2 for h
 /proc/get_both_hands(mob/living/carbon/M)
 	var/list/hands = list(M.l_hand, M.r_hand)
 	return hands
+
+/mob/proc/reagent_check(var/datum/reagent/R) // utilized in the species code
+	return 1
+
+/proc/notify_ghosts(var/message, var/ghost_sound = null) //Easy notification of ghosts.
+	for(var/mob/dead/observer/O in player_list)
+		if(O.client)
+			O << "<span class='ghostalert'>[message]<span>"
+			if(ghost_sound)
+				O << sound(ghost_sound)
 
 /proc/item_heal_robotic(var/mob/living/carbon/human/H, var/mob/user, var/brute, var/burn)
 	var/obj/item/organ/limb/affecting = H.get_organ(check_zone(user.zone_sel.selecting))
@@ -435,11 +477,11 @@ proc/is_special_character(mob/M) // returns 1 for special characters and 2 for h
 			affecting.heal_damage(brute,burn,1)
 			H.update_damage_overlays(0)
 			H.updatehealth()
-			for(var/mob/O in viewers(user, null))
-				O.show_message(text("<span class='notice'>[user] has fixed some of the [dam ? "dents on" : "burnt wires in"] [H]'s [affecting.getDisplayName()]!</span>"), 1)
+			user.visible_message("<span class='notice'>[user] has fixed some of the [dam ? "dents on" : "burnt wires in"] [H]'s [affecting.getDisplayName()]!</span>")
 			return
 		else
 			user << "<span class='notice'>[H]'s [affecting.getDisplayName()] is already in good condition</span>"
 			return
 	else
 		return
+

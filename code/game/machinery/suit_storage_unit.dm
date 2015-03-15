@@ -33,42 +33,74 @@
 //The units themselves/////////////////
 
 /obj/machinery/suit_storage_unit/standard_unit
-	SUIT_TYPE = /obj/item/clothing/suit/space
-	HELMET_TYPE = /obj/item/clothing/head/helmet/space
+	SUIT_TYPE = /obj/item/clothing/suit/space/eva
+	HELMET_TYPE = /obj/item/clothing/head/helmet/space/eva
 	MASK_TYPE = /obj/item/clothing/mask/breath
 
 /obj/machinery/suit_storage_unit/captain
 	SUIT_TYPE = /obj/item/clothing/suit/space/captain
-	HELMET_TYPE = /obj/item/clothing/head/helmet/space/capspace
+	HELMET_TYPE = /obj/item/clothing/head/helmet/space/captain
 	MASK_TYPE = /obj/item/clothing/mask/gas
 	STORAGE_TYPE = /obj/item/weapon/tank/jetpack/oxygen
 
 /obj/machinery/suit_storage_unit/engine
-	SUIT_TYPE = /obj/item/clothing/suit/space/rig
-	HELMET_TYPE = /obj/item/clothing/head/helmet/space/rig
+	SUIT_TYPE = /obj/item/clothing/suit/space/hardsuit
 	MASK_TYPE = /obj/item/clothing/mask/breath
 
 /obj/machinery/suit_storage_unit/ce
-	SUIT_TYPE = /obj/item/clothing/suit/space/rig/elite
-	HELMET_TYPE = /obj/item/clothing/head/helmet/space/rig/elite
+	SUIT_TYPE = /obj/item/clothing/suit/space/hardsuit/elite
 	MASK_TYPE = /obj/item/clothing/mask/breath
 	STORAGE_TYPE= /obj/item/clothing/shoes/magboots/advance
 
 /obj/machinery/suit_storage_unit/security
-	SUIT_TYPE = /obj/item/clothing/suit/space/rig/security
-	HELMET_TYPE = /obj/item/clothing/head/helmet/space/rig/security
+	SUIT_TYPE = /obj/item/clothing/suit/space/hardsuit/security
+	MASK_TYPE = /obj/item/clothing/mask/gas/sechailer
+
+/obj/machinery/suit_storage_unit/hos
+	SUIT_TYPE = /obj/item/clothing/suit/space/hardsuit/security/hos
 	MASK_TYPE = /obj/item/clothing/mask/gas/sechailer
 
 /obj/machinery/suit_storage_unit/atmos
-	SUIT_TYPE = /obj/item/clothing/suit/space/rig/atmos
-	HELMET_TYPE = /obj/item/clothing/head/helmet/space/rig/atmos
+	SUIT_TYPE = /obj/item/clothing/suit/space/hardsuit/atmos
 	MASK_TYPE = /obj/item/clothing/mask/gas
 	STORAGE_TYPE = /obj/item/weapon/watertank/atmos
 
 /obj/machinery/suit_storage_unit/mining
-	SUIT_TYPE = /obj/item/clothing/suit/space/rig/mining
-	HELMET_TYPE = /obj/item/clothing/head/helmet/space/rig/mining
+	SUIT_TYPE = /obj/item/clothing/suit/space/hardsuit/mining
 	MASK_TYPE = /obj/item/clothing/mask/breath
+
+/obj/machinery/suit_storage_unit/cmo
+	SUIT_TYPE = /obj/item/clothing/suit/space/hardsuit/medical
+	MASK_TYPE = /obj/item/clothing/mask/breath
+
+/obj/machinery/suit_storage_unit/syndicate
+	SUIT_TYPE = /obj/item/clothing/suit/space/hardsuit/syndi
+	MASK_TYPE = /obj/item/clothing/mask/gas/syndicate
+	STORAGE_TYPE = /obj/item/weapon/tank/jetpack/oxygen/harness
+
+/obj/machinery/suit_storage_unit/ertCom
+	SUIT_TYPE = /obj/item/clothing/suit/space/ert
+	HELMET_TYPE = /obj/item/clothing/head/helmet/space/hardsuit/ert
+	MASK_TYPE = /obj/item/clothing/mask/breath
+	STORAGE_TYPE = /obj/item/weapon/tank/internals/emergency_oxygen/double
+
+/obj/machinery/suit_storage_unit/ertSec
+	SUIT_TYPE = /obj/item/clothing/suit/space/ert/sec
+	HELMET_TYPE = /obj/item/clothing/head/helmet/space/hardsuit/ert/sec
+	MASK_TYPE = /obj/item/clothing/mask/breath
+	STORAGE_TYPE = /obj/item/weapon/tank/internals/emergency_oxygen/double
+
+/obj/machinery/suit_storage_unit/ertEngi
+	SUIT_TYPE = /obj/item/clothing/suit/space/ert/engi
+	HELMET_TYPE = /obj/item/clothing/head/helmet/space/hardsuit/ert/engi
+	MASK_TYPE = /obj/item/clothing/mask/breath
+	STORAGE_TYPE = /obj/item/weapon/tank/internals/emergency_oxygen/double
+
+/obj/machinery/suit_storage_unit/ertMed
+	SUIT_TYPE = /obj/item/clothing/suit/space/ert/med
+	HELMET_TYPE = /obj/item/clothing/head/helmet/space/hardsuit/ert/med
+	MASK_TYPE = /obj/item/clothing/mask/breath
+	STORAGE_TYPE = /obj/item/weapon/tank/internals/emergency_oxygen/double
 
 /obj/machinery/suit_storage_unit/New()
 	src.update_icon()
@@ -113,7 +145,7 @@
 		dump_everything()
 	update_icon()
 
-/obj/machinery/suit_storage_unit/ex_act(severity)
+/obj/machinery/suit_storage_unit/ex_act(severity, target)
 	switch(severity)
 		if(1.0)
 			if(prob(50))
@@ -416,11 +448,11 @@
 /obj/machinery/suit_storage_unit/container_resist()
 	var/mob/living/user = usr
 	if(islocked)
-		user.changeNext_move(100)
-		user.last_special = world.time + 100
+		user.changeNext_move(CLICK_CD_BREAKOUT)
+		user.last_special = world.time + CLICK_CD_BREAKOUT
 		var/breakout_time = 2
 		user << "<span class='notice'>You start kicking against the doors to escape! (This will take about [breakout_time] minutes.)</span>"
-		visible_message("You see [user] kicking against the doors of the [src]!")
+		visible_message("You see [user] kicking against the doors of \the [src]!")
 		if(do_after(user,(breakout_time*60*10)))
 			if(!user || user.stat != CONSCIOUS || user.loc != src || isopen || !islocked)
 				return
@@ -475,12 +507,12 @@
 	return
 
 
-/obj/machinery/suit_storage_unit/attackby(obj/item/I as obj, mob/user as mob)
+/obj/machinery/suit_storage_unit/attackby(obj/item/I as obj, mob/user as mob, params)
 	if(!src.ispowered)
 		if(istype(I, /obj/item/weapon/crowbar) && !isopen)
 			if(toggle_open(user))
 				dump_everything()
-				user << text("<span class='notice'>You pry the [src] open.</span>")
+				user << text("<span class='notice'>You pry \the [src] open.</span>")
 				update_icon()
 		return
 	if(istype(I, /obj/item/weapon/screwdriver))

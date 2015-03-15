@@ -1,136 +1,3 @@
-var/kill_air = 0
-
-var/global/datum/controller/air_system/air_master
-
-datum/controller/air_system
-	var/list/excited_groups = list()
-	var/list/active_turfs = list()
-	var/list/hotspots = list()
-	var/speed = 1
-
-	//Special functions lists
-	var/list/turf/simulated/active_super_conductivity = list()
-	var/list/turf/simulated/high_pressure_delta = list()
-
-	var/current_cycle = 0
-
-
-/datum/controller/air_system/proc/setup()
-	set background = BACKGROUND_ENABLED
-	world << "\red \b Processing Geometry..."
-	sleep(1)
-
-	var/start_time = world.timeofday
-
-	setup_allturfs()
-
-	global_activeturfs = active_turfs.len
-
-	world << "\red \b Geometry processed in [(world.timeofday-start_time)/10] seconds!"
-
-/datum/controller/air_system/proc/process()
-	if(kill_air)
-		return 1
-
-	if(speed > 1)
-		for(var/i=0,i<speed,i++)
-			spawn((10/speed)*i)
-				process_air()
-	else
-		process_air()
-	return 1
-
-/datum/controller/air_system/proc/process_air()
-	current_cycle++
-	var/timer = world.timeofday
-	process_active_turfs()
-	master_controller.air_turfs = (world.timeofday - timer) / 10
-
-	timer = world.timeofday
-	process_excited_groups()
-	master_controller.air_groups = (world.timeofday - timer) / 10
-
-	timer = world.timeofday
-	process_high_pressure_delta()
-	master_controller.air_highpressure = (world.timeofday - timer) / 10
-
-	timer = world.timeofday
-	process_hotspots()
-	master_controller.air_hotspots = (world.timeofday - timer) / 10
-
-	timer = world.timeofday
-	process_super_conductivity()
-	master_controller.air_superconductivity = (world.timeofday - timer) / 10
-
-/datum/controller/air_system/proc/process_hotspots()
-	for(var/obj/effect/hotspot/H in hotspots)
-		H.process()
-
-/datum/controller/air_system/proc/process_super_conductivity()
-	for(var/turf/simulated/T in active_super_conductivity)
-		T.super_conduct()
-
-/datum/controller/air_system/proc/process_high_pressure_delta()
-	for(var/turf/T in high_pressure_delta)
-		T.high_pressure_movements()
-		T.pressure_difference = 0
-	high_pressure_delta.len = 0
-
-/datum/controller/air_system/proc/process_active_turfs()
-	for(var/turf/simulated/T in active_turfs)
-		T.process_cell()
-
-/datum/controller/air_system/proc/remove_from_active(var/turf/simulated/T)
-	if(istype(T))
-		T.excited = 0
-		active_turfs -= T
-		if(T.excited_group)
-			T.excited_group.garbage_collect()
-
-/datum/controller/air_system/proc/add_to_active(var/turf/simulated/T, var/blockchanges = 1)
-	if(istype(T) && T.air)
-		T.excited = 1
-		active_turfs |= T
-		if(blockchanges && T.excited_group)
-			T.excited_group.garbage_collect()
-	else
-		for(var/direction in cardinal)
-			if(!(T.atmos_adjacent_turfs & direction))
-				continue
-			var/turf/simulated/S = get_step(T, direction)
-			if(istype(S))
-				air_master.add_to_active(S)
-
-/datum/controller/air_system/proc/setup_allturfs()
-	for(var/turf/simulated/T in world)
-		T.CalculateAdjacentTurfs()
-		if(!T.blocks_air)
-			if(T.air.check_tile_graphic())
-				T.update_visuals(T.air)
-			for(var/direction in cardinal)
-				if(!(T.atmos_adjacent_turfs & direction))
-					continue
-				var/turf/enemy_tile = get_step(T, direction)
-				if(istype(enemy_tile,/turf/simulated/))
-					var/turf/simulated/enemy_simulated = enemy_tile
-					if(!T.air.compare(enemy_simulated.air))
-						T.excited = 1
-						active_turfs |= T
-						break
-				else
-					if(!T.air.check_turf(enemy_tile))
-						T.excited = 1
-						active_turfs |= T
-
-/datum/controller/air_system/proc/process_excited_groups()
-	for(var/datum/excited_group/EG in excited_groups)
-		EG.breakdown_cooldown ++
-		if(EG.breakdown_cooldown == 10)
-			EG.self_breakdown()
-			return
-		if(EG.breakdown_cooldown > 20)
-			EG.dismantle()
-
 /turf/proc/CanAtmosPass(var/turf/T)
 	if(!istype(T))	return 0
 	var/R
@@ -168,10 +35,10 @@ datum/controller/air_system
 atom/movable/proc/CanAtmosPass()
 	return 1
 
-atom/proc/CanPass(atom/movable/mover, turf/target, height=1.5, air_group = 0)
-	return (!density || !height || air_group)
+atom/proc/CanPass(atom/movable/mover, turf/target, height=1.5)
+	return (!density || !height)
 
-turf/CanPass(atom/movable/mover, turf/target, height=1.5,air_group=0)
+turf/CanPass(atom/movable/mover, turf/target, height=1.5)
 	if(!target) return 0
 
 	if(istype(mover)) // turf/Enter(...) will perform more advanced checks
@@ -182,10 +49,10 @@ turf/CanPass(atom/movable/mover, turf/target, height=1.5,air_group=0)
 			return 0
 
 		for(var/obj/obstacle in src)
-			if(!obstacle.CanPass(mover, target, height, air_group))
+			if(!obstacle.CanPass(mover, target, height))
 				return 0
 		for(var/obj/obstacle in target)
-			if(!obstacle.CanPass(mover, src, height, air_group))
+			if(!obstacle.CanPass(mover, src, height))
 				return 0
 
 		return 1
@@ -221,8 +88,7 @@ turf/CanPass(atom/movable/mover, turf/target, height=1.5,air_group=0)
 /turf/proc/air_update_turf(var/command = 0)
 	if(command)
 		CalculateAdjacentTurfs()
-	if(air_master)
-		air_master.add_to_active(src,command)
+	SSair.add_to_active(src,command)
 
 /atom/movable/proc/move_update_air(var/turf/T)
     if(istype(T,/turf))
@@ -277,4 +143,4 @@ var/const/SPAWN_AIR = 256
 		G.nitrogen += MOLES_N2STANDARD * amount
 
 	air.merge(G)
-	air_master.add_to_active(src, 0)
+	SSair.add_to_active(src, 0)

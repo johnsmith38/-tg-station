@@ -18,7 +18,7 @@ var/list/admin_ranks = list()								//list of all admin_rank datums
 	adds = init_adds
 	subs = init_subs
 
-/datum/admin_rank/proc/process_keyword(word, previous_rights=0)
+/proc/admin_keyword_to_flag(word, previous_rights=0)
 	var/flag = 0
 	switch(ckey(word))
 		if("buildmode","build")			flag = R_BUILDMODE
@@ -36,22 +36,41 @@ var/list/admin_ranks = list()								//list of all admin_rank datums
 		if("sound","sounds")			flag = R_SOUNDS
 		if("spawn","create")			flag = R_SPAWN
 		if("@","prev")					flag = previous_rights
-		else
-			//isn't a keyword so maybe it's a verbpath?
-			var/path = text2path(copytext(word,2,findtext(word," ",2,0)))
-			if(path)
-				switch(text2ascii(word,1))
-					if(43)
-						if(!subs.Remove(path))
-							adds += path	//+
-					if(45)
-						if(!adds.Remove(path))
-							subs += path	//-
-			return
-	switch(text2ascii(word,1))
-		if(43)	rights |= flag	//+
-		if(45)	rights &= ~flag	//-
-	return
+	return flag
+
+/proc/admin_keyword_to_path(word) //use this with verb keywords eg +/client/proc/blah
+	return text2path(copytext(word,2,findtext(word," ",2,0)))
+
+// Adds/removes rights to this admin_rank
+/datum/admin_rank/proc/process_keyword(word, previous_rights=0)
+	var/flag = admin_keyword_to_flag(word, previous_rights)
+	if(flag)
+		switch(text2ascii(word,1))
+			if(43)	rights |= flag	//+
+			if(45)	rights &= ~flag	//-
+	else
+		//isn't a keyword so maybe it's a verbpath?
+		var/path = admin_keyword_to_path(word)
+		if(path)
+			switch(text2ascii(word,1))
+				if(43)
+					if(!subs.Remove(path))
+						adds += path	//+
+				if(45)
+					if(!adds.Remove(path))
+						subs += path	//-
+
+// Checks for (keyword-formatted) rights on this admin
+/datum/admins/proc/check_keyword(word)
+	var/flag = admin_keyword_to_flag(word)
+	if(flag)
+		return ((rank.rights & flag) == flag) //true only if right has everything in flag
+	else
+		var/path = admin_keyword_to_path(word)
+		for(var/i in owner.verbs) //this needs to be a foreach loop for some reason. in operator and verbs.Find() don't work
+			if(i == path)
+				return 1
+		return 0
 
 //load our rank - > rights associations
 /proc/load_admin_ranks()
@@ -85,7 +104,7 @@ var/list/admin_ranks = list()								//list of all admin_rank datums
 			load_admin_ranks()
 			return
 
-		var/DBQuery/query = dbcon.NewQuery("SELECT rank, flags FROM erro_admin_ranks")
+		var/DBQuery/query = dbcon.NewQuery("SELECT rank, flags FROM [format_table_name("admin_ranks")]")
 		query.Execute()
 		while(query.NextRow())
 			var/rank_name = ckeyEx(query.item[1])
@@ -153,7 +172,7 @@ var/list/admin_ranks = list()								//list of all admin_rank datums
 			load_admins()
 			return
 
-		var/DBQuery/query = dbcon.NewQuery("SELECT ckey, rank FROM erro_admin")
+		var/DBQuery/query = dbcon.NewQuery("SELECT ckey, rank FROM [format_table_name("admin")]")
 		query.Execute()
 		while(query.NextRow())
 			var/ckey = ckey(query.item[1])
@@ -222,6 +241,10 @@ var/list/admin_ranks = list()								//list of all admin_rank datums
 		if("remove")
 			if(alert("Are you sure you want to remove [adm_ckey]?","Message","Yes","Cancel") == "Yes")
 				if(!D)	return
+				if(!check_if_greater_rights_than_holder(D))
+					message_admins("[key_name_admin(usr)] attempted to remove [adm_ckey] from the admins list without sufficient rights.")
+					log_admin("[key_name(usr)] attempted to remove [adm_ckey] from the admins list without sufficient rights.")
+					return
 				admin_datums -= adm_ckey
 				D.disassociate()
 
@@ -243,6 +266,12 @@ var/list/admin_ranks = list()								//list of all admin_rank datums
 				if("*New Rank*")
 					new_rank = ckeyEx(input("Please input a new rank", "New custom rank", null, null) as null|text)
 					if(!new_rank)	return
+
+			if(D)
+				if(!check_if_greater_rights_than_holder(D))
+					message_admins("[key_name_admin(usr)] attempted to change the rank of [adm_ckey] to [new_rank] without sufficient rights.")
+					log_admin("[key_name(usr)] attempted to change the rank of [adm_ckey] to [new_rank] without sufficient rights.")
+					return
 
 			R = rank_names[new_rank]
 			if(!R)	//rank with that name doesn't exist yet - make it
@@ -268,6 +297,11 @@ var/list/admin_ranks = list()								//list of all admin_rank datums
 
 			var/keyword = input("Input permission keyword (one at a time):\ne.g. +BAN or -FUN or +/client/proc/someverb", "Permission toggle", null, null) as null|text
 			if(!keyword)	return
+
+			if(!check_keyword(keyword) || !check_if_greater_rights_than_holder(D))
+				message_admins("[key_name_admin(usr)] attempted to give [adm_ckey] the keyword [keyword] without sufficient rights.")
+				log_admin("[key_name(usr)] attempted to give [adm_ckey] the keyword [keyword] without sufficient rights.")
+				return
 
 			D.disassociate()
 

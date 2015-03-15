@@ -4,14 +4,16 @@
 	return
 
 // No comment
-/atom/proc/attackby(obj/item/W, mob/user)
+/atom/proc/attackby(obj/item/W, mob/user, params)
 	return
-/atom/movable/attackby(obj/item/W, mob/user)
-	if(W && !(W.flags&NOBLUDGEON))
-		visible_message("<span class='danger'>[src] has been hit by [user] with [W].</span>")
 
-/mob/living/attackby(obj/item/I, mob/user)
-	user.changeNext_move(8)
+/atom/movable/attackby(obj/item/W, mob/living/user, params)
+	user.do_attack_animation(src)
+	if(W && !(W.flags&NOBLUDGEON))
+		visible_message("<span class='danger'>[user] has hit [src] with [W].</span>")
+
+/mob/living/attackby(obj/item/I, mob/user, params)
+	user.changeNext_move(CLICK_CD_MELEE)
 	I.attack(src, user)
 
 /mob/living/proc/attacked_by(var/obj/item/I, var/mob/living/user, var/def_zone)
@@ -22,18 +24,21 @@
 			if(istype(location, /turf/simulated))
 				location.add_blood_floor(src)
 
-	var/showname = "."
-	if(user)
-		showname = " by [user]!"
-	if(!(user in viewers(src, null)))
-		showname = "."
-
+	var/message_verb = ""
 	if(I.attack_verb && I.attack_verb.len)
-		src.visible_message("<span class='danger'>[src] has been [pick(I.attack_verb)] with [I][showname]</span>",
-		"<span class='userdanger'>[src] has been [pick(I.attack_verb)] with [I][showname]</span>")
+		message_verb = "[pick(I.attack_verb)]"
 	else if(I.force)
-		src.visible_message("<span class='danger'>[src] has been attacked with [I][showname]</span>",
-		"<span class='userdanger'>[src] has been attacked with [I][showname]</span>")
+		message_verb = "attacked"
+
+	var/attack_message = "[src] has been [message_verb] with [I]."
+	if(user)
+		user.do_attack_animation(src)
+		if(user in viewers(src, null))
+			attack_message = "[user] has [message_verb] [src] with [I]!"
+	if(message_verb)
+		visible_message("<span class='danger'>[attack_message]</span>",
+		"<span class='userdanger'>[attack_message]</span>")
+
 
 // Proximity_flag is 1 if this afterattack was called on something adjacent, in your square, or on your person.
 // Click parameters is the params string from byond Click() code, see that documentation.
@@ -60,7 +65,7 @@ obj/item/proc/get_clamped_volume()
 	user.lastattacked = M
 	M.lastattacker = user
 
-	add_logs(user, M, "attacked", object=src.name, addition="(INTENT: [uppertext(user.a_intent)]) (DAMTYE: [uppertext(damtype)])")
+	add_logs(user, M, "attacked", object=src.name, addition="(INTENT: [uppertext(user.a_intent)]) (DAMTYPE: [uppertext(damtype)])")
 
 	//spawn(1800)            // this wont work right
 	//	M.lastattacker = null

@@ -22,7 +22,7 @@
 				4 = Screwdriver panel closed and is fully built (you cannot attach upgrades)
 	*/
 
-/obj/item/weapon/camera_assembly/attackby(obj/item/W as obj, mob/living/user as mob)
+/obj/item/weapon/camera_assembly/attackby(obj/item/W as obj, mob/living/user as mob, params)
 
 	switch(state)
 
@@ -59,8 +59,11 @@
 			if(istype(W, /obj/item/stack/cable_coil))
 				var/obj/item/stack/cable_coil/C = W
 				if(C.use(2))
-					user << "You add wires to the assembly."
+					user << "<span class='notice'>You add wires to the assembly.</span>"
 					state = 3
+				else
+					user << "<span class='warning'>You need two lengths of cable to wire a camera.</span>"
+					return
 				return
 
 			else if(istype(W, /obj/item/weapon/weldingtool))
@@ -77,7 +80,7 @@
 			if(istype(W, /obj/item/weapon/screwdriver))
 				playsound(src.loc, 'sound/items/Screwdriver.ogg', 50, 1)
 
-				var/input = strip_html(input(usr, "Which networks would you like to connect this camera to? Seperate networks with a comma. No Spaces!\nFor example: SS13,Security,Secret ", "Set Network", "SS13"))
+				var/input = stripped_input(usr, "Which networks would you like to connect this camera to? Seperate networks with a comma. No Spaces!\nFor example: SS13,Security,Secret ", "Set Network", "SS13")
 				if(!input)
 					usr << "No input found please hang up and try your call again."
 					return
@@ -96,7 +99,7 @@
 
 				C.network = tempnetwork
 				var/area/A = get_area_master(src)
-				C.c_tag = "[A.name] ([rand(1, 999)]"
+				C.c_tag = "[A.name] ([rand(1, 999)])"
 
 				for(var/i = 5; i >= 0; i -= 1)
 					var/direct = input(user, "Direction?", "Assembling Camera", null) in list("LEAVE IT", "NORTH", "EAST", "SOUTH", "WEST" )
@@ -118,7 +121,7 @@
 
 	// Upgrades!
 	if(is_type_in_list(W, possible_upgrades) && !is_type_in_list(W, upgrades)) // Is a possible upgrade and isn't in the camera already.
-		user << "You attach the [W] into the assembly inner circuits."
+		user << "You attach \the [W] into the assembly inner circuits."
 		upgrades += W
 		user.drop_item()
 		W.loc = src
@@ -153,7 +156,7 @@
 	if(!WT.isOn())
 		return 0
 
-	user << "<span class='notice'>You start to weld the [src]..</span>"
+	user << "<span class='notice'>You start to weld \the [src]..</span>"
 	playsound(src.loc, 'sound/items/Welder.ogg', 50, 1)
 	WT.eyecheck(user)
 	busy = 1

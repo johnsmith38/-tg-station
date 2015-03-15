@@ -2,7 +2,7 @@
 	name = "display case"
 	icon = 'icons/obj/stationobjs.dmi'
 	icon_state = "glassbox1"
-	desc = "A display case for prized possessions. It taunts you to kick it."
+	desc = "A display case for prized possessions. Hooked up with an anti-theft system."
 	density = 1
 	anchored = 1
 	unacidable = 1//Dissolving the case would also delete the gun.
@@ -10,7 +10,7 @@
 	var/occupied = 1
 	var/destroyed = 0
 
-/obj/structure/displaycase/ex_act(severity)
+/obj/structure/displaycase/ex_act(severity, target)
 	switch(severity)
 		if (1)
 			new /obj/item/weapon/shard( src.loc )
@@ -53,6 +53,12 @@
 			new /obj/item/weapon/shard( src.loc )
 			playsound(src, "shatter", 70, 1)
 			update_icon()
+
+			//Activate Anti-theft
+			var/area/alarmed = get_area(src)
+			alarmed.burglaralert(src)
+			playsound(src, "sound/effects/alert.ogg", 50, 1)
+
 	else
 		playsound(src.loc, 'sound/effects/Glasshit.ogg', 75, 1)
 	return
@@ -65,8 +71,8 @@
 	return
 
 
-/obj/structure/displaycase/attackby(obj/item/weapon/W as obj, mob/user as mob)
-	user.changeNext_move(8)
+/obj/structure/displaycase/attackby(obj/item/weapon/W as obj, mob/user as mob, params)
+	user.changeNext_move(CLICK_CD_MELEE)
 	src.health -= W.force
 	src.healthcheck()
 	..()
@@ -76,19 +82,17 @@
 	return src.attack_hand(user)
 
 /obj/structure/displaycase/attack_hand(mob/user as mob)
-	user.changeNext_move(8)
+	user.changeNext_move(CLICK_CD_MELEE)
 	if (src.destroyed && src.occupied)
 		new /obj/item/weapon/gun/energy/laser/captain( src.loc )
-		user << "\b You deactivate the hover field built into the case."
+		user << "<span class='notice'>You deactivate the hover field built into the case.</span>"
 		src.occupied = 0
 		src.add_fingerprint(user)
 		update_icon()
 		return
 	else
-		usr << text("\blue You kick the display case.")
-		for(var/mob/O in oviewers())
-			if ((O.client && !( O.blinded )))
-				O << text("\red [] kicks the display case.", usr)
+		user.visible_message("<span class='danger'>[user] kicks the display case.</span>", \
+						 "<span class='notice'>You kick the display case.</span>")
 		src.health -= 2
 		healthcheck()
 		return

@@ -1,5 +1,8 @@
-## Server name: This appears at the top of the screen in-game. In this case it will read "tgstation: station_name" where station_name is the randomly generated name of the station for the round. Remove the # infront of SERVERNAME and replace 'tgstation' with the name of your choice
-# SERVERNAME tgstation
+## Server name: This appears at the top of the screen in-game. Remove the # infront of SERVERNAME and replace 'tgstation' with the name of your choice
+# SERVERNAME SpaceStation38
+
+## Station name: The name of the station as it is referred to in-game. If commented out, the game will generate a random name instead.
+STATIONNAME Space Station 13
 
 # Lobby time: This is the amount of time between rounds that players have to setup their characters and be ready.
 LOBBY_COUNTDOWN 120
@@ -56,9 +59,6 @@ LOG_LAW
 ## log all Topic() calls (for use by coders in tracking down Topic issues)
 # LOG_HREFS
 
-## log admin warning messages
-##LOG_ADMINWARN  ## Also duplicates a bunch of other messages.
-
 ## disconnect players who did nothing during 10 minutes
 # KICK_INACTIVE
 
@@ -111,10 +111,16 @@ GUEST_BAN
 # SERVER ss13.example.com:2506
 
 ## forum address
-# FORUMURL http://justanotherday.example.com
+# FORUMURL http://tgstation13.org/phpBB/index.php
 
 ## Wiki address
 # WIKIURL http://www.tgstation13.org/wiki
+
+##Rules address
+# RULESURL http://www.tgstation13.org/wiki/Rules
+
+##Github address
+# GITHUBURL https://www.github.com/tgstation/-tg-station
 
 ## Ban appeals URL - usually for a forum or wherever people should go to contact your admins.
 # BANAPPEALS http://justanotherday.example.com
@@ -147,3 +153,41 @@ TICKCOMP 0
 
 ## Communication key for receiving data through world/Topic(), you don't want to give this out
 #COMMS_KEY default_pwd
+
+## Uncomment this to let players see their own notes (they can still be set by admins only)
+#SEE_OWN_NOTES
+
+##Note: all population caps can be used with each other if desired.
+
+## Uncomment for 'soft' population caps, players will be warned while joining if the living crew exceeds the listed number.
+#SOFT_POPCAP 100
+
+## Message for soft cap
+SOFT_POPCAP_MESSAGE Be warned that the server is currently serving a high number of users, consider using alternative game servers.
+
+## Uncomment for 'hard' population caps, players will not be allowed to spawn if the living crew exceeds the listed number, though they may still observe or wait for the living crew to decrease in size.
+#HARD_POPCAP 150
+
+## Message for hard cap
+HARD_POPCAP_MESSAGE The server is currently serving a high number of users, You cannot currently join. You may wait for the number of living crew to decline, observe, or find alternative servers.
+
+## Uncomment for 'extreme' population caps, players will not be allowed to join the server if living crew exceeds the listed number.
+#EXTREME_POPCAP 200
+
+## Message for extreme cap
+EXTREME_POPCAP_MESSAGE The server is currently serving a high number of users, find alternative servers.
+
+## Notify admins when a new player connects for the first x days a player's been around. (0 for first connection only, -1 for never)
+##	Requres database
+NOTIFY_NEW_PLAYER_AGE 0 
+
+## Notify the irc channel when a new player makes their first connection
+##	Requres database
+#IRC_FIRST_CONNECTION_ALERT
+
+## Deny all new connections by ckeys we haven't seen before (exempts admins and only denies the connection if the database is enabled and connected)
+##	Requires database
+#PANIC_BUNKER
+
+## Uncomment to have the changelog file automatically open when a user connects and hasn't seen the latest changelog
+#AGGRESSIVE_CHANGELOG

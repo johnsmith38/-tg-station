@@ -13,10 +13,6 @@
 	landmarks_list += src
 
 	switch(name)			//some of these are probably obsolete
-		if("shuttle")
-			shuttle_z = z
-			qdel(src)
-			return
 		if("monkey")
 			monkeystart += loc
 			qdel(src)
@@ -55,7 +51,18 @@
 			blobstart += loc
 			qdel(src)
 			return
-
+		if("secequipment")
+			secequipment += loc
+			qdel(src)
+			return
+		if("Deathsquad")
+			deathsquadspawn += loc
+			qdel(src)
+			return
+		if("Emergencyresponseteam")
+			emergencyresponseteamspawn += loc
+			qdel(src)
+			return
 		if("xeno_spawn")
 			xeno_spawn += loc
 			qdel(src)
@@ -77,6 +84,7 @@
 	..()
 	tag = "start*[name]"
 	invisibility = 101
+	start_landmarks_list += src
 
 	return 1
 
@@ -104,7 +112,7 @@
 /obj/effect/landmark/costume/madscientist/New()
 	new /obj/item/clothing/under/gimmick/rank/captain/suit(src.loc)
 	new /obj/item/clothing/head/flatcap(src.loc)
-	new /obj/item/clothing/suit/labcoat/mad(src.loc)
+	new /obj/item/clothing/suit/toggle/labcoat/mad(src.loc)
 	new /obj/item/clothing/glasses/gglasses(src.loc)
 	qdel(src)
 
@@ -134,14 +142,6 @@
 	new /obj/item/clothing/head/that(src.loc)
 	qdel(src)
 
-/obj/effect/landmark/costume/scratch/New()
-	new /obj/item/clothing/gloves/white(src.loc)
-	new /obj/item/clothing/shoes/sneakers/white(src.loc)
-	new /obj/item/clothing/under/scratch(src.loc)
-	if (prob(30))
-		new /obj/item/clothing/head/cueball(src.loc)
-	qdel(src)
-
 /obj/effect/landmark/costume/highlander/New()
 	new /obj/item/clothing/under/kilt(src.loc)
 	new /obj/item/clothing/head/beret(src.loc)
@@ -165,8 +165,16 @@
 	qdel(src)
 
 /obj/effect/landmark/costume/nightowl/New()
+	new /obj/item/clothing/suit/toggle/owlwings(src.loc)
 	new /obj/item/clothing/under/owl(src.loc)
 	new /obj/item/clothing/mask/gas/owl_mask(src.loc)
+	qdel(src)
+
+/obj/effect/landmark/costume/thegriffin/New()
+	new /obj/item/clothing/suit/toggle/owlwings/griffinwings(src.loc)
+	new /obj/item/clothing/shoes/griffin(src.loc)
+	new /obj/item/clothing/under/griffin(src.loc)
+	new /obj/item/clothing/head/griffin(src.loc)
 	qdel(src)
 
 /obj/effect/landmark/costume/waiter/New()

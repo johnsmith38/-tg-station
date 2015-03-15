@@ -1,8 +1,8 @@
 /obj/effect/proc_holder/changeling/panacea
 	name = "Anatomic Panacea"
-	desc = "Expels impurifications from our form; curing diseases, genetic disabilities, and removing toxins and radiation."
+	desc = "Expels impurifications from our form; curing diseases, removing toxins and radiation, and resetting our genetic code completely."
 	helptext = "Can be used while unconscious."
-	chemical_cost = 25
+	chemical_cost = 20
 	dna_cost = 1
 	req_stat = UNCONSCIOUS
 
@@ -10,9 +10,9 @@
 /obj/effect/proc_holder/changeling/panacea/sting_action(var/mob/user)
 
 	user << "<span class='notice'>We cleanse impurities from our form.</span>"
-	user.reagents.add_reagent("ryetalyn", 10)
-	user.reagents.add_reagent("hyronalin", 10)
-	user.reagents.add_reagent("anti_toxin", 20)
+	user.reagents.add_reagent("mutadone", 10)
+	user.reagents.add_reagent("potass_iodide", 10)
+	user.reagents.add_reagent("charcoal", 20)
 
 	for(var/datum/disease/D in user.viruses)
 		D.cure()

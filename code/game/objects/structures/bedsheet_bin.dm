@@ -32,6 +32,12 @@ LINEN BINS
 	add_fingerprint(user)
 	return
 
+/obj/item/weapon/bedsheet/attackby(obj/item/I, mob/user, params)
+	if(istype(I, /obj/item/weapon/wirecutters) || istype(I, /obj/item/weapon/shard))
+		new /obj/item/stack/medical/gauze/improvised(src.loc)
+		qdel(src)
+		user << "<span class='notice'>You tear [src] up.</span>"
+	..()
 
 /obj/item/weapon/bedsheet/blue
 	icon_state = "sheetblue"
@@ -163,15 +169,14 @@ LINEN BINS
 	var/obj/item/hidden = null
 
 
-/obj/structure/bedsheetbin/examine()
+/obj/structure/bedsheetbin/examine(mob/user)
 	..()
 	if(amount < 1)
-		usr << "There are no bed sheets in the bin."
-		return
-	if(amount == 1)
-		usr << "There is one bed sheet in the bin."
-		return
-	usr << "There are [amount] bed sheets in the bin."
+		user << "There are no bed sheets in the bin."
+	else if(amount == 1)
+		user << "There is one bed sheet in the bin."
+	else
+		user << "There are [amount] bed sheets in the bin."
 
 
 /obj/structure/bedsheetbin/update_icon()
@@ -181,7 +186,7 @@ LINEN BINS
 		else		icon_state = "linenbin-full"
 
 
-/obj/structure/bedsheetbin/attackby(obj/item/I as obj, mob/user as mob)
+/obj/structure/bedsheetbin/attackby(obj/item/I as obj, mob/user as mob, params)
 	if(istype(I, /obj/item/weapon/bedsheet))
 		user.drop_item()
 		I.loc = src

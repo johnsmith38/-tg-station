@@ -11,6 +11,13 @@
 	attack_verb = list("called", "rang")
 	hitsound = 'sound/weapons/ring.ogg'
 
+/obj/item/weapon/phone/suicide_act(mob/user)
+	if(locate(/obj/structure/stool) in user.loc)
+		user.visible_message("<span class='notice'>[user] begins to tie a noose with the [src.name]'s cord! It looks like \he's trying to commit suicide.</span>")
+	else
+		user.visible_message("<span class='notice'>[user] is strangling \himself with the [src.name]'s cord! It looks like \he's trying to commit suicide.</span>")
+	return(OXYLOSS)
+
 /obj/item/weapon/rsp
 	name = "\improper Rapid-Seed-Producer (RSP)"
 	desc = "A device used to rapidly deploy seeds."
@@ -66,46 +73,6 @@
 	icon_state = "spacecash1000"
 	desc = "It's worth 1000 credits."
 
-/obj/item/weapon/soap
-	name = "soap"
-	desc = "A cheap bar of soap. Doesn't smell."
-	gender = PLURAL
-	icon = 'icons/obj/items.dmi'
-	icon_state = "soap"
-	w_class = 1.0
-	throwforce = 0
-	throw_speed = 3
-	throw_range = 7
-
-/obj/item/weapon/soap/nanotrasen
-	desc = "A Nanotrasen brand bar of soap. Smells of plasma."
-	icon_state = "soapnt"
-
-/obj/item/weapon/soap/deluxe
-	desc = "A deluxe Waffle Co. brand bar of soap. Smells of condoms."
-	icon_state = "soapdeluxe"
-
-/obj/item/weapon/soap/syndie
-	desc = "An untrustworthy bar of soap. Smells of fear."
-	icon_state = "soapsyndie"
-
-/obj/item/weapon/bikehorn
-	name = "bike horn"
-	desc = "A horn off of a bicycle."
-	icon = 'icons/obj/items.dmi'
-	icon_state = "bike_horn"
-	item_state = "bike_horn"
-	throwforce = 0
-	hitsound = null //To prevent tap.ogg playing, as the item lacks of force
-	w_class = 1.0
-	throw_speed = 3
-	throw_range = 7
-	attack_verb = list("HONKED")
-	var/spam_flag = 0
-
-/obj/item/weapon/bikehorn/attack(mob/living/carbon/M as mob, mob/living/carbon/user as mob)
-	playsound(loc, 'sound/items/bikehorn.ogg', 50, 1, -1) //plays instead of tap.ogg!
-	return ..()
 
 /obj/item/weapon/c_tube
 	name = "cardboard tube"
@@ -134,96 +101,6 @@
 	name = "disk"
 	icon = 'icons/obj/items.dmi'
 
-/*
-/obj/item/weapon/game_kit
-	name = "Gaming Kit"
-	icon = 'icons/obj/items.dmi'
-	icon_state = "game_kit"
-	var/selected = null
-	var/board_stat = null
-	var/data = ""
-	var/base_url = "http://svn.slurm.us/public/spacestation13/misc/game_kit"
-	item_state = "sheet-metal"
-	w_class = 5.0
-*/
-
-/obj/item/weapon/legcuffs
-	name = "legcuffs"
-	desc = "Use this to keep prisoners in line."
-	gender = PLURAL
-	icon = 'icons/obj/items.dmi'
-	icon_state = "handcuff"
-	flags = CONDUCT
-	throwforce = 0
-	w_class = 3.0
-	origin_tech = "materials=1"
-	slowdown = 7
-	var/breakouttime = 300	//Deciseconds = 30s = 0.5 minute
-
-/obj/item/weapon/legcuffs/beartrap
-	name = "bear trap"
-	throw_speed = 1
-	throw_range = 1
-	icon_state = "beartrap0"
-	desc = "A trap used to catch bears and other legged creatures."
-	var/armed = 0
-
-/obj/item/weapon/legcuffs/beartrap/suicide_act(mob/user)
-	user.visible_message("<span class='suicide'>[user] is putting the [src.name] on \his head! It looks like \he's trying to commit suicide.</span>")
-	return (BRUTELOSS)
-
-/obj/item/weapon/legcuffs/beartrap/attack_self(mob/user as mob)
-	..()
-	if(ishuman(user) && !user.stat && !user.restrained())
-		armed = !armed
-		icon_state = "beartrap[armed]"
-		user << "<span class='notice'>[src] is now [armed ? "armed" : "disarmed"]</span>"
-
-
-/obj/item/weapon/legcuffs/beartrap/Crossed(AM as mob|obj)
-	if(armed && isturf(src.loc))
-		if( (iscarbon(AM) || isanimal(AM)) && !istype(AM, /mob/living/simple_animal/parrot) && !istype(AM, /mob/living/simple_animal/construct) && !istype(AM, /mob/living/simple_animal/shade) && !istype(AM, /mob/living/simple_animal/hostile/viscerator))
-			var/mob/living/L = AM
-			armed = 0
-			icon_state = "beartrap0"
-			playsound(src.loc, 'sound/effects/snap.ogg', 50, 1)
-			L.visible_message("<span class='danger'>[L] triggers \the [src].</span>", \
-					"<span class='userdanger'>You trigger \the [src]!</span>")
-
-			if(ishuman(AM))
-				var/mob/living/carbon/H = AM
-				if(H.lying)
-					H.apply_damage(20,BRUTE,"chest")
-				else
-					H.apply_damage(20,BRUTE,(pick("l_leg", "r_leg")))
-				if(!H.legcuffed) //beartrap can't cuff you leg if there's already a beartrap or legcuffs.
-					H.legcuffed = src
-					src.loc = H
-					H.update_inv_legcuffed(0)
-					feedback_add_details("handcuffs","B") //Yes, I know they're legcuffs. Don't change this, no need for an extra variable. The "B" is used to tell them apart.
-
-			else
-				L.apply_damage(20,BRUTE)
-	..()
-
-
-
-/obj/item/weapon/caution
-	desc = "Caution! Wet Floor!"
-	name = "wet floor sign"
-	icon = 'icons/obj/janitor.dmi'
-	icon_state = "caution"
-	force = 1.0
-	throwforce = 3.0
-	throw_speed = 2
-	throw_range = 5
-	w_class = 2.0
-	attack_verb = list("warned", "cautioned", "smashed")
-
-/obj/item/weapon/caution/cone
-	desc = "This cone is trying to warn you of something!"
-	name = "warning cone"
-	icon_state = "cone"
 
 /obj/item/weapon/rack_parts
 	name = "rack parts"
@@ -265,42 +142,6 @@
 	w_class = 2.0
 	flags = NOSHIELD
 
-/obj/item/weapon/table_parts
-	name = "table parts"
-	desc = "Parts of a table. Poor table."
-	gender = PLURAL
-	icon = 'icons/obj/items.dmi'
-	icon_state = "table_parts"
-	var/table_type = /obj/structure/table
-	var/construct_delay = 50
-	m_amt = 3750
-	flags = CONDUCT
-	attack_verb = list("slammed", "bashed", "battered", "bludgeoned", "thrashed", "whacked")
-
-/obj/item/weapon/table_parts/reinforced
-	name = "reinforced table parts"
-	desc = "Hard table parts. Well...harder..."
-	icon = 'icons/obj/items.dmi'
-	icon_state = "reinf_tableparts"
-	table_type = /obj/structure/table/reinforced
-	construct_delay = 100
-	m_amt = 7500
-	flags = CONDUCT
-
-/obj/item/weapon/table_parts/wood
-	name = "wooden table parts"
-	desc = "Keep away from fire."
-	icon_state = "wood_tableparts"
-	table_type = /obj/structure/table/woodentable
-	flags = null
-
-/obj/item/weapon/table_parts/wood/poker
-	name = "poker table parts"
-	desc = "Keep away from fire, and keep near seedy dealers."
-	icon_state = "poker_tableparts"
-	table_type = /obj/structure/table/woodentable/poker
-	flags = null
-
 /obj/item/weapon/module
 	icon = 'icons/obj/module.dmi'
 	icon_state = "std_module"
@@ -336,6 +177,7 @@
 /obj/item/weapon/syntiflesh
 	name = "syntiflesh"
 	desc = "Meat that appears...strange..."
+	gender = PLURAL
 	icon = 'icons/obj/food.dmi'
 	icon_state = "meat"
 	flags = CONDUCT
@@ -358,6 +200,11 @@
 	attack_verb = list("chopped", "torn", "cut")
 	hitsound = 'sound/weapons/bladeslice.ogg'
 
+/obj/item/weapon/hatchet/suicide_act(mob/user)
+	user.visible_message("<span class='suicide'>[user] is chopping at \himself with the [src.name]! It looks like \he's trying to commit suicide.</span>")
+	playsound(loc, 'sound/weapons/bladeslice.ogg', 50, 1, -1)
+	return (BRUTELOSS)
+
 /obj/item/weapon/scythe
 	icon_state = "scythe0"
 	name = "scythe"
@@ -372,6 +219,11 @@
 	origin_tech = "materials=2;combat=2"
 	attack_verb = list("chopped", "sliced", "cut", "reaped")
 	hitsound = 'sound/weapons/bladeslice.ogg'
+
+/obj/item/weapon/scythe/suicide_act(mob/user)  // maybe later i'll actually figure out how to make it behead them
+	user.visible_message("<span class='suicide'>[user] is beheading \himself with the [src.name]! It looks like \he's trying to commit suicide.</span>")
+	playsound(loc, 'sound/weapons/bladeslice.ogg', 50, 1, -1)
+	return (BRUTELOSS)
 
 /*
 /obj/item/weapon/cigarpacket
@@ -396,19 +248,29 @@
 ///////////////////////////////////////Stock Parts /////////////////////////////////
 
 /obj/item/weapon/storage/part_replacer
-	name = "Rapid Part Exchange Device"
+	name = "rapid part exchange device"
 	desc = "Special mechanical module made to store, sort, and apply standard machine parts."
 	icon_state = "RPED"
 	item_state = "RPED"
 	w_class = 5
 	can_hold = list(/obj/item/weapon/stock_parts)
-	storage_slots = 14
+	storage_slots = 50
 	use_to_pickup = 1
 	allow_quick_gather = 1
 	allow_quick_empty = 1
 	collection_mode = 1
+	display_contents_with_number = 1
 	max_w_class = 3
-	max_combined_w_class = 28
+	max_combined_w_class = 100
+
+/obj/item/weapon/storage/part_replacer/proc/play_rped_sound()
+	//Plays the sound for RPED exhanging or installing parts.
+	playsound(src, 'sound/items/rped.ogg', 40, 1)
+
+//Sorts stock parts inside an RPED by their rating.
+//Only use /obj/item/weapon/stock_parts/ with this sort proc!
+/proc/cmp_rped_sort(var/obj/item/weapon/stock_parts/A, var/obj/item/weapon/stock_parts/B)
+	return B.rating - A.rating
 
 /obj/item/weapon/stock_parts
 	name = "stock part"
@@ -416,9 +278,10 @@
 	icon = 'icons/obj/stock_parts.dmi'
 	w_class = 2.0
 	var/rating = 1
-	New()
-		src.pixel_x = rand(-5.0, 5)
-		src.pixel_y = rand(-5.0, 5)
+
+/obj/item/weapon/stock_parts/New()
+	src.pixel_x = rand(-5.0, 5)
+	src.pixel_y = rand(-5.0, 5)
 
 //Rank 1
 
@@ -620,9 +483,13 @@
 	icon = 'icons/obj/wizard.dmi'
 	icon_state = "ectoplasm"
 
+/obj/item/weapon/ectoplasm/suicide_act(mob/user)
+	user.visible_message("<span class='suicide'>[user] is inhaling the [src.name]! It looks like \he's trying to visit the astral plane.</span>")
+	return (OXYLOSS)
+
 /obj/item/weapon/research//Makes testing much less of a pain -Sieve
 	name = "research"
 	icon = 'icons/obj/stock_parts.dmi'
 	icon_state = "capacitor"
 	desc = "A debug item for research."
-	origin_tech = "materials=8;programming=8;magnets=8;powerstorage=8;bluespace=8;combat=8;biotech=8;syndicate=8"
+	origin_tech = "materials=8;programming=8;magnets=8;powerstorage=8;bluespace=8;combat=8;biotech=8;syndicate=8;engineering=8;plasmatech=8"

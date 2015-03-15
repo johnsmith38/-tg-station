@@ -17,7 +17,8 @@
 	set_frequency(receive_frequency)
 
 /obj/machinery/computer/atmos_alert/Destroy()
-	radio_controller.remove_object(src, receive_frequency)
+	if(radio_controller)
+		radio_controller.remove_object(src, receive_frequency)
 	..()
 
 /obj/machinery/computer/atmos_alert/receive_signal(datum/signal/signal)
@@ -60,11 +61,13 @@
 		src.updateDialog()
 
 /obj/machinery/computer/atmos_alert/update_icon()
+	SetLuminosity(brightness_on)
 	if(stat & BROKEN)
 		icon_state = "alert:b"
 		return
 	else if (stat & NOPOWER)
 		icon_state = "alert:O"
+		SetLuminosity(0)
 		return
 	else if(priority_alarms.len)
 		icon_state = "alert:2"

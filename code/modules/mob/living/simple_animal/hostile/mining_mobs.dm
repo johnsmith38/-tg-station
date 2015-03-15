@@ -8,8 +8,8 @@
 	max_co2 = 0
 	min_n2 = 0
 	max_n2 = 0
-	unsuitable_atoms_damage = 15
-	faction = "mining"
+	unsuitable_atmos_damage = 15
+	faction = list("mining")
 	environment_smash = 2
 	minbodytemp = 0
 	heat_damage_per_tick = 20
@@ -99,7 +99,7 @@
 				visible_message("<span class='danger'>The [src.name]'s stare chills [L.name] to the bone!</span>")
 	return
 
-/mob/living/simple_animal/hostile/asteroid/basilisk/ex_act(severity)
+/mob/living/simple_animal/hostile/asteroid/basilisk/ex_act(severity, target)
 	switch(severity)
 		if(1.0)
 			gib()
@@ -334,6 +334,7 @@
 	mouse_opacity = 2
 	move_to_delay = 40
 	ranged = 1
+	ranged_cooldown = 2 //By default, start the Goliath with his cooldown off so that people can run away quickly on first sight
 	ranged_cooldown_cap = 8
 	friendly = "wails at"
 	vision_range = 4
@@ -348,6 +349,19 @@
 	aggro_vision_range = 9
 	idle_vision_range = 5
 	anchored = 1 //Stays anchored until death as to be unpullable
+	mob_size = 2
+	var/pre_attack = 0
+
+/mob/living/simple_animal/hostile/asteroid/goliath/Life()
+	..()
+	handle_preattack()
+
+/mob/living/simple_animal/hostile/asteroid/goliath/proc/handle_preattack()
+	if(ranged_cooldown <= 2 && !pre_attack)
+		pre_attack++
+	if(!pre_attack || stat || stance == HOSTILE_STANCE_IDLE)
+		return
+	icon_state = "Goliath_preattack"
 
 /mob/living/simple_animal/hostile/asteroid/goliath/revive()
 	anchored = 1
@@ -363,16 +377,27 @@
 		visible_message("<span class='warning'>The [src.name] digs its tentacles under [target.name]!</span>")
 		new /obj/effect/goliath_tentacle/original(tturf)
 		ranged_cooldown = ranged_cooldown_cap
+		icon_state = icon_aggro
+		pre_attack = 0
 	return
 
 /mob/living/simple_animal/hostile/asteroid/goliath/adjustBruteLoss(var/damage)
 	ranged_cooldown--
+	handle_preattack()
 	..()
+
+/mob/living/simple_animal/hostile/asteroid/goliath/Aggro()
+	vision_range = aggro_vision_range
+	handle_preattack()
+	if(icon_state != icon_aggro)
+		icon_state = icon_aggro
+	return
 
 /obj/effect/goliath_tentacle/
 	name = "Goliath tentacle"
 	icon = 'icons/mob/animal.dmi'
 	icon_state = "Goliath_tentacle"
+	var/latched = 0
 
 /obj/effect/goliath_tentacle/New()
 	var/turftype = get_turf(src)
@@ -385,6 +410,9 @@
 /obj/effect/goliath_tentacle/original
 
 /obj/effect/goliath_tentacle/original/New()
+	for(var/obj/effect/goliath_tentacle/original/O in loc)//No more GG NO RE from 2+ goliaths simultaneously tentacling you
+		if(O != src)
+			qdel(src)
 	var/list/directions = cardinal.Copy()
 	var/counter
 	for(counter = 1, counter <= 3, counter++)
@@ -396,15 +424,15 @@
 
 /obj/effect/goliath_tentacle/proc/Trip()
 	for(var/mob/living/M in src.loc)
-		M.Weaken(5)
-		visible_message("<span class='warning'>The [src.name] knocks [M.name] down!</span>")
-	qdel(src)
-
-/obj/effect/goliath_tentacle/Crossed(AM as mob|obj)
-	if(isliving(AM))
-		Trip()
-		return
-	..()
+		M.Stun(5)
+		M.adjustBruteLoss(rand(10,15))
+		latched = 1
+		visible_message("<span class='danger'>The [src.name] grabs hold of [M.name]!</span>")
+	if(!latched)
+		qdel(src)
+	else
+		spawn(50)
+			qdel(src)
 
 /mob/living/simple_animal/hostile/asteroid/goliath/Die()
 	var/obj/item/asteroid/goliath_hide/G = new /obj/item/asteroid/goliath_hide(src.loc)
@@ -416,18 +444,40 @@
 	desc = "Pieces of a goliath's rocky hide, these might be able to make your suit a bit more durable to attack from the local fauna."
 	icon = 'icons/obj/items.dmi'
 	icon_state = "goliath_hide"
+	flags = NOBLUDGEON
 	w_class = 3
 	layer = 4
 
 /obj/item/asteroid/goliath_hide/afterattack(atom/target, mob/user, proximity_flag)
 	if(proximity_flag)
-		if(istype(target, /obj/item/clothing/suit/space/rig/mining) || istype(target, /obj/item/clothing/head/helmet/space/rig/mining))
+		if(istype(target, /obj/item/clothing/suit/space/hardsuit/mining) || istype(target, /obj/item/clothing/head/helmet/space/hardsuit/mining))
 			var/obj/item/clothing/C = target
-			var/current_armor = C.armor
+			var/list/current_armor = C.armor
 			if(current_armor.["melee"] < 80)
 				current_armor.["melee"] = min(current_armor.["melee"] + 10, 80)
 				user << "<span class='info'>You strengthen [target], improving its resistance against melee attacks.</span>"
 				qdel(src)
 			else
 				user << "<span class='info'>You can't improve [C] any further.</span>"
-	return
+				return
+		if(istype(target, /obj/mecha/working/ripley))
+			var/obj/mecha/D = target
+			var/list/damage_absorption = D.damage_absorption
+			if(damage_absorption.["brute"] > 0.3)
+				damage_absorption.["brute"] = max(damage_absorption.["brute"] - 0.1, 0.3)
+				user << "<span class='info'>You strengthen [target], improving its resistance against melee attacks.</span>"
+				qdel(src)
+				if(D.icon_state == "ripley-open")
+					D.overlays += image("icon"="mecha.dmi", "icon_state"="ripley-g-open")
+					D.desc = "Autonomous Power Loader Unit. Its armour is enhanced with some goliath hide plates."
+				else
+					user << "<span class='info'>You can't add armour onto the mech while someone is inside!</span>"
+				if(damage_absorption.["brute"] == 0.3)
+					if(D.icon_state == "ripley-open")
+						D.overlays += image("icon"="mecha.dmi", "icon_state"="ripley-g-full-open")
+						D.desc = "Autonomous Power Loader Unit. It's wearing a fearsome carapace entirely composed of goliath hide plates - the pilot must be an experienced monster hunter."
+					else
+						user << "<span class='info'>You can't add armour onto the mech while someone is inside!</span>"
+			else
+				user << "<span class='info'>You can't improve [D] any further.</span>"
+				return

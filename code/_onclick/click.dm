@@ -37,7 +37,6 @@
 	if(world.time <= next_click)
 		return
 	next_click = world.time + 1
-
 	if(client.buildmode)
 		build_click(src, client.buildmode, params, A)
 		return
@@ -74,7 +73,7 @@
 		return M.click_action(A,src)
 
 	if(restrained())
-		changeNext_move(10)   //Doing shit in cuffs shall be vey slow
+		changeNext_move(CLICK_CD_HANDCUFFED)   //Doing shit in cuffs shall be vey slow
 		RestrainedClickOn(A)
 		return
 
@@ -102,7 +101,7 @@
 				W.afterattack(A,src,1,params) // 1 indicates adjacency
 		else
 			if(ismob(A))
-				changeNext_move(8)
+				changeNext_move(CLICK_CD_MELEE)
 			UnarmedAttack(A)
 		return
 
@@ -114,12 +113,12 @@
 		if(A.Adjacent(src)) // see adjacent.dm
 			if(W)
 				// Return 1 in attackby() to prevent afterattack() effects (when safely moving items for example)
-				var/resolved = A.attackby(W,src)
+				var/resolved = A.attackby(W,src,params)
 				if(!resolved && A && W)
 					W.afterattack(A,src,1,params) // 1: clicking something Adjacent
 			else
 				if(ismob(A))
-					changeNext_move(8)
+					changeNext_move(CLICK_CD_MELEE)
 				UnarmedAttack(A, 1)
 			return
 		else // non-adjacent click
@@ -127,7 +126,7 @@
 				W.afterattack(A,src,0,params) // 0: not Adjacent
 			else
 				RangedAttack(A, params)
-
+	last_movement=world.time
 	return
 
 /mob/proc/changeNext_move(num)
@@ -150,7 +149,7 @@
 */
 /mob/proc/UnarmedAttack(var/atom/A, var/proximity_flag)
 	if(ismob(A))
-		changeNext_move(8)
+		changeNext_move(CLICK_CD_MELEE)
 	return
 
 /*
@@ -162,12 +161,6 @@
 	animals lunging, etc.
 */
 /mob/proc/RangedAttack(var/atom/A, var/params)
-	if(!mutations.len) return
-	if((LASER in mutations) && a_intent == "harm")
-		LaserEyes(A) // moved into a proc below
-	else
-		if(TK in mutations)
-			A.attack_tk(src)
 /*
 	Restrained ClickOn
 
@@ -183,8 +176,13 @@
 */
 /mob/proc/MiddleClickOn(var/atom/A)
 	return
+
 /mob/living/carbon/MiddleClickOn(var/atom/A)
-	swap_hand()
+	if(!src.stat && src.mind && src.mind.changeling && src.mind.changeling.chosen_sting && (istype(A, /mob/living/carbon)) && (A != src))
+		next_click = world.time + 5
+		mind.changeling.chosen_sting.try_to_sting(src, A)
+	else
+		swap_hand()
 
 // In case of use break glass
 /*
@@ -202,7 +200,7 @@
 	return
 /atom/proc/ShiftClick(var/mob/user)
 	if(user.client && user.client.eye == user)
-		examine()
+		user.examinate(src)
 	return
 
 /*
@@ -226,6 +224,13 @@
 /mob/proc/AltClickOn(var/atom/A)
 	A.AltClick(src)
 	return
+
+/mob/living/carbon/AltClickOn(var/atom/A)
+	if(!src.stat && src.mind && src.mind.changeling && src.mind.changeling.chosen_sting && (istype(A, /mob/living/carbon)) && (A != src))
+		next_click = world.time + 5
+		mind.changeling.chosen_sting.try_to_sting(src, A)
+	else
+		..()
 
 /atom/proc/AltClick(var/mob/user)
 	var/turf/T = get_turf(src)
@@ -261,7 +266,7 @@
 	return
 
 /mob/living/LaserEyes(atom/A)
-	changeNext_move(4)
+	changeNext_move(CLICK_CD_RANGE)
 	var/turf/T = get_turf(src)
 	var/turf/U = get_turf(A)
 
@@ -276,8 +281,7 @@
 	LE.current = T
 	LE.yo = U.y - T.y
 	LE.xo = U.x - T.x
-	spawn( 1 )
-		LE.process()
+	LE.fire()
 
 /mob/living/carbon/human/LaserEyes()
 	if(nutrition>0)
@@ -285,7 +289,7 @@
 		nutrition = max(nutrition - rand(1,5),0)
 		handle_regular_hud_updates()
 	else
-		src << "\red You're out of energy!  You need food!"
+		src << "<span class='danger'>You're out of energy!  You need food!</span>"
 
 // Simple helper to face what you clicked on, in case it should be needed in more than one place
 /mob/proc/face_atom(var/atom/A)

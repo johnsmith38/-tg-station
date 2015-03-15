@@ -10,7 +10,7 @@
 	var/occupied = 1
 	var/destroyed = 0
 
-/obj/structure/lamarr/ex_act(severity)
+/obj/structure/lamarr/ex_act(severity, target)
 	switch(severity)
 		if (1)
 			new /obj/item/weapon/shard( src.loc )
@@ -60,8 +60,8 @@
 	return
 
 
-/obj/structure/lamarr/attackby(obj/item/weapon/W as obj, mob/user as mob)
-	user.changeNext_move(8)
+/obj/structure/lamarr/attackby(obj/item/weapon/W as obj, mob/user as mob, params)
+	user.changeNext_move(CLICK_CD_MELEE)
 	src.health -= W.force
 	src.healthcheck()
 	..()
@@ -71,14 +71,12 @@
 	return src.attack_hand(user)
 
 /obj/structure/lamarr/attack_hand(mob/user as mob)
-	user.changeNext_move(8)
+	user.changeNext_move(CLICK_CD_MELEE)
 	if (src.destroyed)
 		return
 	else
-		usr << text("\blue You kick the lab cage.")
-		for(var/mob/O in oviewers())
-			if ((O.client && !( O.blinded )))
-				O << text("\red [] kicks the lab cage.", usr)
+		user.visible_message("<span class='danger'>[user] kicks the lab cage.</span>", \
+					 		"<span class='notice'>You kick the lab cage.</span>")
 		src.health -= 2
 		healthcheck()
 		return

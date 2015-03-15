@@ -17,7 +17,6 @@
 /obj/machinery/atmospherics/unary/cryo_cell/New()
 	..()
 	initialize_directions = dir
-	initialize()
 	component_parts = list()
 	component_parts += new /obj/item/weapon/circuitboard/cryo_tube(null)
 	component_parts += new /obj/item/weapon/stock_parts/matter_bin(null)
@@ -27,6 +26,9 @@
 	component_parts += new /obj/item/weapon/stock_parts/console_screen(null)
 	component_parts += new /obj/item/stack/cable_coil(null, 1)
 	RefreshParts()
+
+/obj/machinery/atmospherics/unary/cryo_cell/construction()
+	..(dir,dir)
 
 /obj/machinery/atmospherics/unary/cryo_cell/RefreshParts()
 	var/C
@@ -45,7 +47,12 @@
 
 /obj/machinery/atmospherics/unary/cryo_cell/process()
 	..()
-	if(!node)
+	if(occupant)
+		if(occupant.health >= 100)
+			on = 0
+			open_machine()
+			playsound(src.loc, 'sound/machines/ding.ogg', 50, 1)
+	if(!node || !is_operational())
 		return
 	if(!on)
 		updateDialog()
@@ -57,11 +64,9 @@
 		expel_gas()
 
 		if(occupant)
-			if(occupant.stat != 2)
-				process_occupant()
-
+			process_occupant()
 	if(abs(temperature_archived-air_contents.temperature) > 1)
-		network.update = 1
+		parent.update = 1
 
 	updateDialog()
 	return 1
@@ -79,27 +84,41 @@
 	open_machine()
 
 /obj/machinery/atmospherics/unary/cryo_cell/container_resist()
-	if(stat & DEAD)
-		return
-	sleep(usr.stat * 1200)
 	open_machine()
 	return
 
-/obj/machinery/atmospherics/unary/cryo_cell/examine()
+/obj/machinery/atmospherics/unary/cryo_cell/verb/move_eject()
+	set name = "Eject Cryo Cell"
+	set desc = "Begin the release sequence inside the cryo tube."
+	set category = "Object"
+	set src in oview(1)
+	if(usr == occupant || contents.Find(usr))	//If the user is inside the tube...
+		if(usr.stat == DEAD)	//and he's not dead....
+			return
+		usr << "<span class='notice'>Release sequence activated. This will take about a minute.</span>"
+		sleep(600)
+		if(!src || !usr || (!occupant && !contents.Find(usr)))	//Check if someone's released/replaced/bombed him already
+			return
+		open_machine()
+		add_fingerprint(usr)
+	else
+		open_machine()
+
+/obj/machinery/atmospherics/unary/cryo_cell/examine(mob/user)
 	..()
 
-	if(in_range(usr, src))
-		usr << "You can just about make out some loose objects floating in the murk:"
-		for(var/obj/O in src)
-			if(O != beaker)
-				usr << O.name
-		for(var/mob/M in src)
-			if(M != occupant)
-				usr << M.name
+	var/list/otherstuff = contents - beaker
+	if(otherstuff.len > 0)
+		user << "You can just about make out some loose objects floating in the murk:"
+		for(var/atom/movable/floater in otherstuff)
+			user << "\icon[floater] [floater.name]"
 	else
-		usr << "<span class='notice'>Too far away to view contents.</span>"
+		user << "Seems empty."
 
 /obj/machinery/atmospherics/unary/cryo_cell/attack_hand(mob/user)
+	if(..())
+		return
+
 	ui_interact(user)
 
 
@@ -162,7 +181,7 @@
 			beakerContents.Add(list(list("name" = R.name, "volume" = R.volume))) // list in a list because Byond merges the first list...
 	data["beakerContents"] = beakerContents
 
-	var/datum/nanoui/ui = nanomanager.get_open_ui(user, src, ui_key)
+	var/datum/nanoui/ui = SSnano.get_open_ui(user, src, ui_key)
 	if (!ui)
 		// the ui does not exist, so we'll create a new one
 		ui = new(user, src, ui_key, "cryo.tmpl", "Cryo Cell Control System", 520, 410)
@@ -189,12 +208,11 @@
 			on = 1
 
 	if(href_list["open"])
-		on = 0
 		open_machine()
 
 	if(href_list["close"])
 		if(close_machine() == usr)
-			var/datum/nanoui/ui = nanomanager.get_open_ui(usr, src, "main")
+			var/datum/nanoui/ui = SSnano.get_open_ui(usr, src, "main")
 			ui.close()
 			on = 1
 	if(href_list["switchOff"])
@@ -209,7 +227,7 @@
 	add_fingerprint(usr)
 	return 1 // update UIs attached to this object
 
-/obj/machinery/atmospherics/unary/cryo_cell/attackby(obj/item/I, mob/user)
+/obj/machinery/atmospherics/unary/cryo_cell/attackby(obj/item/I, mob/user, params)
 	if(istype(I, /obj/item/weapon/reagent_containers/glass))
 		if(beaker)
 			user << "<span class='notice'>A beaker is already loaded into [src].</span>"
@@ -231,10 +249,14 @@
 	if(exchange_parts(user, I))
 		return
 
+	if(default_pry_open(I))
+		return
+
 	default_deconstruction_crowbar(I)
 
 /obj/machinery/atmospherics/unary/cryo_cell/open_machine()
 	if(!state_open && !panel_open)
+		on = 0
 		layer = 3
 		if(occupant)
 			occupant.bodytemperature = Clamp(occupant.bodytemperature, 261, 360)
@@ -255,7 +277,7 @@
 	if(state_open)
 		icon_state = "cell-open"
 		return
-	if(on)
+	if(on && is_operational())
 		if(occupant)
 			icon_state = "cell-occupied"
 		else
@@ -263,6 +285,9 @@
 	else
 		icon_state = "cell-off"
 
+/obj/machinery/atmospherics/unary/cryo_cell/power_change()
+	..()
+	update_icon()
 
 /obj/machinery/atmospherics/unary/cryo_cell/proc/process_occupant()
 	if(air_contents.total_moles() < 10)
@@ -274,8 +299,8 @@
 		occupant.bodytemperature += 2*(air_contents.temperature - occupant.bodytemperature) * current_heat_capacity / (current_heat_capacity + air_contents.heat_capacity())
 		occupant.bodytemperature = max(occupant.bodytemperature, air_contents.temperature) // this is so ugly i'm sorry for doing it i'll fix it later i promise
 		if(occupant.bodytemperature < T0C)
-			occupant.sleeping = max(5/efficiency, (1 / occupant.bodytemperature)*2000/efficiency)
-			occupant.Paralyse(max(5/efficiency, (1 / occupant.bodytemperature)*3000/efficiency))
+//			occupant.sleeping = max(5/efficiency, (1 / occupant.bodytemperature)*2000/efficiency)
+//			occupant.Paralyse(max(5/efficiency, (1 / occupant.bodytemperature)*3000/efficiency))
 			if(air_contents.oxygen > 2)
 				if(occupant.getOxyLoss()) occupant.adjustOxyLoss(-1)
 			else

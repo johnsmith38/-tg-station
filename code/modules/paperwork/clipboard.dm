@@ -26,7 +26,7 @@
 	overlays += "clipboard_over"
 
 
-/obj/item/weapon/clipboard/attackby(obj/item/weapon/W, mob/user)
+/obj/item/weapon/clipboard/attackby(obj/item/weapon/W, mob/user, params)
 	if(istype(W, /obj/item/weapon/paper))
 		user.drop_item()
 		W.loc = src
@@ -103,7 +103,7 @@
 		if(href_list["read"])
 			var/obj/item/weapon/paper/P = locate(href_list["read"])
 			if(istype(P) && P.loc == src)
-				P.examine()
+				usr.examinate(P)
 
 		if(href_list["top"])
 			var/obj/item/P = locate(href_list["top"])

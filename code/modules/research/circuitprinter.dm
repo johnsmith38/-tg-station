@@ -6,6 +6,7 @@ using metal and glass, it uses glass and reagents (usually sulfuric acis).
 */
 /obj/machinery/r_n_d/circuit_imprinter
 	name = "Circuit Imprinter"
+	desc = "Manufactures circuit boards for the construction of machines."
 	icon_state = "circuit_imprinter"
 	flags = OPENCONTAINER
 
@@ -15,6 +16,19 @@ using metal and glass, it uses glass and reagents (usually sulfuric acis).
 	var/max_material_amount = 75000.0
 	var/efficiency_coeff
 	reagents = new()
+
+	var/list/categories = list(
+								"AI Modules",
+								"Computer Boards",
+								"Teleportation Machinery",
+								"Medical Machinery",
+								"Engineering Machinery",
+								"Exosuit Modules",
+								"Hydroponics Machinery",
+								"Subspace Telecomms",
+								"Research Machinery",
+								"Misc. Machinery"
+								)
 
 /obj/machinery/r_n_d/circuit_imprinter/New()
 	..()
@@ -47,19 +61,19 @@ using metal and glass, it uses glass and reagents (usually sulfuric acis).
 /obj/machinery/r_n_d/circuit_imprinter/proc/check_mat(datum/design/being_built, var/M)
 	switch(M)
 		if("$glass")
-			return (g_amount - (being_built.materials[M]/efficiency_coeff) >= 0) ? 1 : 0
+			return (g_amount - (being_built.materials[M]/efficiency_coeff) >= 0)
 		if("$gold")
-			return (gold_amount - (being_built.materials[M]/efficiency_coeff) >= 0) ? 1 : 0
+			return (gold_amount - (being_built.materials[M]/efficiency_coeff) >= 0)
 		if("$diamond")
-			return (diamond_amount - (being_built.materials[M]/efficiency_coeff) >= 0) ? 1 : 0
+			return (diamond_amount - (being_built.materials[M]/efficiency_coeff) >= 0)
 		else
-			return (reagents.has_reagent(M, (being_built.materials[M]/efficiency_coeff)) != 0) ? 1 : 0
+			return (reagents.has_reagent(M, (being_built.materials[M]/efficiency_coeff)) != 0)
 
 
 /obj/machinery/r_n_d/circuit_imprinter/proc/TotalMaterials()
 	return g_amount + gold_amount + diamond_amount
 
-/obj/machinery/r_n_d/circuit_imprinter/attackby(var/obj/item/O as obj, var/mob/user as mob)
+/obj/machinery/r_n_d/circuit_imprinter/attackby(var/obj/item/O as obj, var/mob/user as mob, params)
 	if (shocked)
 		shock(user,50)
 	if (default_deconstruction_screwdriver(user, "circuit_imprinter_t", "circuit_imprinter", O))
@@ -75,15 +89,15 @@ using metal and glass, it uses glass and reagents (usually sulfuric acis).
 		if(istype(O, /obj/item/weapon/crowbar))
 			for(var/obj/item/weapon/reagent_containers/glass/G in component_parts)
 				reagents.trans_to(G, G.reagents.maximum_volume)
-			if(g_amount >= 3750)
+			if(g_amount >= MINERAL_MATERIAL_AMOUNT)
 				var/obj/item/stack/sheet/glass/G = new /obj/item/stack/sheet/glass(src.loc)
-				G.amount = round(g_amount / 3750)
-			if(gold_amount >= 2000)
+				G.amount = round(g_amount / MINERAL_MATERIAL_AMOUNT)
+			if(gold_amount >= MINERAL_MATERIAL_AMOUNT)
 				var/obj/item/stack/sheet/mineral/gold/G = new /obj/item/stack/sheet/mineral/gold(src.loc)
-				G.amount = round(gold_amount / 2000)
-			if(diamond_amount >= 2000)
+				G.amount = round(gold_amount / MINERAL_MATERIAL_AMOUNT)
+			if(diamond_amount >= MINERAL_MATERIAL_AMOUNT)
 				var/obj/item/stack/sheet/mineral/diamond/G = new /obj/item/stack/sheet/mineral/diamond(src.loc)
-				G.amount = round(diamond_amount / 2000)
+				G.amount = round(diamond_amount / MINERAL_MATERIAL_AMOUNT)
 			default_deconstruction_crowbar(O)
 			return
 		else
@@ -92,7 +106,7 @@ using metal and glass, it uses glass and reagents (usually sulfuric acis).
 	if (disabled)
 		return
 	if (!linked_console)
-		user << "\The [name] must be linked to an R&D console first!"
+		user << "<span class='warning'>The [name] must be linked to an R&D console first!</span>"
 		return 1
 	if (O.is_open_container())
 		return
@@ -116,14 +130,14 @@ using metal and glass, it uses glass and reagents (usually sulfuric acis).
 		amount = min(stack.amount, round((max_material_amount-TotalMaterials())/stack.perunit))
 
 	busy = 1
-	use_power(max(1000, (3750*amount/10)))
+	use_power(max(1000, (MINERAL_MATERIAL_AMOUNT*amount/10)))
 	user << "<span class='notice'>You add [amount] sheets to the [src.name].</span>"
 	if(istype(stack, /obj/item/stack/sheet/glass))
-		g_amount += amount * 3750
+		g_amount += amount * MINERAL_MATERIAL_AMOUNT
 	else if(istype(stack, /obj/item/stack/sheet/mineral/gold))
-		gold_amount += amount * 2000
+		gold_amount += amount * MINERAL_MATERIAL_AMOUNT
 	else if(istype(stack, /obj/item/stack/sheet/mineral/diamond))
-		diamond_amount += amount * 2000
+		diamond_amount += amount * MINERAL_MATERIAL_AMOUNT
 	stack.use(amount)
 	busy = 0
 	src.updateUsrDialog()

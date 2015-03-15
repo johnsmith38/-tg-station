@@ -54,7 +54,7 @@
 			src << "Help for MMI emotes. You can use these emotes with say \"*emote\":\nalarm, alert, beep, blink, boop, flash, notice, whistle"
 
 		else
-			src << "\blue Unusable emote '[act]'. Say *help for a list."
+			src << "<span class='notice'>Unusable emote '[act]'. Say *help for a list.</span>"
 
 	if (message)
 		log_emote("[name]/[key] : [message]")
@@ -62,13 +62,11 @@
 		for(var/mob/M in dead_mob_list)
 			if (!M.client || istype(M, /mob/new_player))
 				continue //skip monkeys, leavers, and new_players
-			if(M.stat == DEAD && (M.client.prefs.toggles & CHAT_GHOSTSIGHT) && !(M in viewers(src,null)))
+			if(M.stat == DEAD && (M.client && (M.client.prefs.toggles & CHAT_GHOSTSIGHT)) && !(M in viewers(src,null)))
 				M.show_message(message)
 
 
 		if (m_type & 1)
-			for (var/mob/O in viewers(src, null))
-				O.show_message(message, m_type)
+			visible_message(message)
 		else if (m_type & 2)
-			for (var/mob/O in hearers(src.loc, null))
-				O.show_message(message, m_type)
+			audible_message(message)

@@ -76,14 +76,15 @@
 			emped = emped+1  //Increase the number of consecutive EMP's
 			var/thisemp = emped //Take note of which EMP this proc is for
 			spawn(900)
-				if(emped == thisemp) //Only fix it if the camera hasn't been EMP'd again
-					network = previous_network
-					icon_state = initial(icon_state)
-					stat &= ~EMPED
-					cancelCameraAlarm()
-					if(can_use())
-						cameranet.addCamera(src)
-					emped = 0 //Resets the consecutive EMP count
+				if(loc) //qdel limbo
+					if(emped == thisemp) //Only fix it if the camera hasn't been EMP'd again
+						network = previous_network
+						icon_state = initial(icon_state)
+						stat &= ~EMPED
+						cancelCameraAlarm()
+						if(can_use())
+							cameranet.addCamera(src)
+						emped = 0 //Resets the consecutive EMP count
 			for(var/mob/O in mob_list)
 				if (O.client && O.client.eye == src)
 					O.unset_machine()
@@ -92,11 +93,11 @@
 			..()
 
 
-/obj/machinery/camera/ex_act(severity)
+/obj/machinery/camera/ex_act(severity, target)
 	if(src.invuln)
 		return
 	else
-		..(severity)
+		..()
 	return
 
 /obj/machinery/camera/blob_act()
@@ -115,6 +116,7 @@
 /obj/machinery/camera/attack_paw(mob/living/carbon/alien/humanoid/user as mob)
 	if(!istype(user))
 		return
+	user.do_attack_animation(src)
 	status = 0
 	visible_message("<span class='warning'>\The [user] slashes at [src]!</span>")
 	playsound(src.loc, 'sound/weapons/slash.ogg', 100, 1)
@@ -122,7 +124,7 @@
 	add_hiddenprint(user)
 	deactivate(user,0)
 
-/obj/machinery/camera/attackby(W as obj, mob/living/user as mob)
+/obj/machinery/camera/attackby(W as obj, mob/living/user as mob, params)
 	var/msg = "<span class='notice'>You attach [W] into the assembly inner circuits.</span>"
 	var/msg2 = "<span class='notice'>The camera already has that upgrade!</span>"
 
@@ -190,6 +192,7 @@
 			itemname = P.name
 			info = P.notehtml
 		U << "You hold \the [itemname] up to the camera ..."
+		U.changeNext_move(CLICK_CD_MELEE)
 		for(var/mob/O in player_list)
 			if(istype(O, /mob/living/silicon/ai))
 				var/mob/living/silicon/ai/AI = O
@@ -201,14 +204,14 @@
 				O << browse(text("<HTML><HEAD><TITLE>[]</TITLE></HEAD><BODY><TT>[]</TT></BODY></HTML>", itemname, info), text("window=[]", itemname))
 	else if (istype(W, /obj/item/device/camera_bug))
 		if (!src.can_use())
-			user << "\blue Camera non-functional"
+			user << "<span class='notice'>Camera non-functional.</span>"
 			return
 		if(istype(src.bug))
-			user << "\blue Camera bug removed."
+			user << "<span class='notice'>Camera bug removed.</span>"
 			src.bug.bugged_cameras -= src.c_tag
 			src.bug = null
 		else
-			user << "\blue Camera bugged."
+			user << "<span class='notice'>Camera bugged.</span>"
 			src.bug = W
 			src.bug.bugged_cameras[src.c_tag] = src
 	else if(istype(W, /obj/item/weapon/melee/energy/blade))//Putting it here last since it's a special case. I wonder if there is a better way to do these than type casting.
@@ -218,7 +221,7 @@
 		spark_system.start()
 		playsound(loc, 'sound/weapons/blade1.ogg', 50, 1)
 		playsound(loc, "sparks", 50, 1)
-		visible_message("\blue The camera has been sliced apart by [] with an energy blade!")
+		visible_message("<span class='notice'>[user] has sliced the camera apart with an energy blade!</span>")
 		qdel(src)
 	else if(istype(W, /obj/item/device/laser_pointer))
 		var/obj/item/device/laser_pointer/L = W
@@ -232,19 +235,19 @@
 		status = !( src.status )
 		if (!(src.status))
 			if(user)
-				visible_message("\red [user] deactivates [src]!")
+				visible_message("<span class='danger'>[user] deactivates [src]!</span>")
 				add_hiddenprint(user)
 			else
-				visible_message("\red \The [src] deactivates!")
+				visible_message("<span class='danger'>\The [src] deactivates!</span>")
 			playsound(src.loc, 'sound/items/Wirecutter.ogg', 100, 1)
 			icon_state = "[initial(icon_state)]1"
 
 		else
 			if(user)
-				visible_message("\red [user] reactivates [src]!")
+				visible_message("<span class='danger'>[user] reactivates [src]!</span>")
 				add_hiddenprint(user)
 			else
-				visible_message("\red \The [src] reactivates!")
+				visible_message("<span class='danger'>\The [src] reactivates!</span>")
 			playsound(src.loc, 'sound/items/Wirecutter.ogg', 100, 1)
 			icon_state = initial(icon_state)
 
@@ -266,7 +269,7 @@
 /obj/machinery/camera/proc/cancelCameraAlarm()
 	alarm_on = 0
 	for(var/mob/living/silicon/S in mob_list)
-		S.cancelAlarm("Camera", get_area(src), list(src), src)
+		S.cancelAlarm("Camera", get_area(src), src)
 
 /obj/machinery/camera/proc/can_use()
 	if(!status)
@@ -281,7 +284,7 @@
 	if(isXRay())
 		see = range(view_range, pos)
 	else
-		see = hear(view_range, pos)
+		see = get_hear(view_range, pos)
 	return see
 
 /atom/proc/auto_turn()

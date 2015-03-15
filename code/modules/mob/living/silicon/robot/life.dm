@@ -5,9 +5,6 @@
 	if (src.notransform)
 		return
 
-
-	src.blinded = null
-
 	//Status updates, death etc.
 	clamp_values()
 	handle_regular_status_updates()
@@ -17,16 +14,20 @@
 		update_items()
 	if (src.stat != DEAD) //still using power
 		use_power()
+
 	update_canmove()
+
+	update_gravity(mob_has_gravity())
+
 	handle_fire()
 
 
 
 /mob/living/silicon/robot/proc/clamp_values()
 
-//	SetStunned(min(stunned, 30))
+	SetStunned(min(stunned, 30))
 	SetParalysis(min(paralysis, 30))
-//	SetWeakened(min(weakened, 20))
+	SetWeakened(min(weakened, 20))
 	sleeping = 0
 	adjustBruteLoss(0)
 	adjustToxLoss(0)
@@ -50,7 +51,7 @@
 			if(src.module_state_3)
 				src.cell.use(5)
 			src.cell.use(1)
-			src.blinded = 0
+			src.eye_blind = 0
 			src.stat = 0
 	else
 		uneq_all()
@@ -98,34 +99,25 @@
 				AdjustWeakened(-1)
 			if (src.paralysis > 0)
 				AdjustParalysis(-1)
-				src.blinded = 1
+				src.eye_blind = max(eye_blind, 1)
 			else
-				src.blinded = 0
+				src.eye_blind = 0
 
 		else	//Not stunned.
 			src.stat = 0
 
 	else //Dead.
-		src.blinded = 1
-		src.stat = 2
+		src.eye_blind = 1
 
 	if (src.stuttering) src.stuttering--
 
 	if (src.eye_blind)
 		src.eye_blind--
-		src.blinded = 1
-
-	if (src.ear_deaf > 0) src.ear_deaf--
-	if (src.ear_damage < 25)
-		src.ear_damage -= 0.05
-		src.ear_damage = max(src.ear_damage, 0)
 
 	src.density = !( src.lying )
 
-	if ((src.sdisabilities & BLIND))
-		src.blinded = 1
-	if ((src.sdisabilities & DEAF))
-		src.ear_deaf = 1
+	if (src.disabilities & BLIND)
+		src.eye_blind = max(1, eye_blind)
 
 	if (src.eye_blurry > 0)
 		src.eye_blurry--
@@ -139,7 +131,7 @@
 
 /mob/living/silicon/robot/proc/handle_regular_hud_updates()
 
-	if (src.stat == 2 || XRAY in mutations || src.sight_mode & BORGXRAY)
+	if (src.stat == 2 || src.sight_mode & BORGXRAY)
 		src.sight |= SEE_TURFS
 		src.sight |= SEE_MOBS
 		src.sight |= SEE_OBJS
@@ -153,7 +145,8 @@
 			src.see_invisible = SEE_INVISIBLE_MINIMUM
 		else if (src.sight_mode & BORGMESON)
 			src.sight |= SEE_TURFS
-			see_invisible = SEE_INVISIBLE_MINIMUM
+			src.see_invisible = SEE_INVISIBLE_MINIMUM
+			src.see_in_dark = 1
 		else if (src.sight_mode & BORGTHERM)
 			src.sight |= SEE_MOBS
 			src.see_invisible = SEE_INVISIBLE_LEVEL_TWO
@@ -164,13 +157,6 @@
 			src.see_invisible = SEE_INVISIBLE_LEVEL_TWO
 		if(see_override)
 			see_invisible = see_override
-
-	for(var/image/hud in client.images)
-		if(copytext(hud.icon_state,1,4) == "hud") //ugly, but icon comparison is worse, I believe
-			client.images.Remove(hud)
-
-	var/obj/item/borg/sight/hud/hud = (locate(/obj/item/borg/sight/hud) in src)
-	if(hud && hud.hud)	hud.hud.process_hud(src)
 
 	if (src.healths)
 		if (src.stat != 2)
@@ -204,54 +190,37 @@
 				src.mind.special_role = "traitor"
 				ticker.mode.traitors += src.mind
 
-	if (src.cells)
-		if (src.cell)
-			var/cellcharge = src.cell.charge/src.cell.maxcharge
-			switch(cellcharge)
-				if(0.75 to INFINITY)
-					src.cells.icon_state = "charge4"
-				if(0.5 to 0.75)
-					src.cells.icon_state = "charge3"
-				if(0.25 to 0.5)
-					src.cells.icon_state = "charge2"
-				if(0 to 0.25)
-					src.cells.icon_state = "charge1"
-				else
-					src.cells.icon_state = "charge0"
+	if (src.cell)
+		var/cellcharge = src.cell.charge/src.cell.maxcharge
+		switch(cellcharge)
+			if(0.75 to INFINITY)
+				clear_alert("charge")
+			if(0.5 to 0.75)
+				throw_alert("charge","lowcell",1)
+			if(0.25 to 0.5)
+				throw_alert("charge","lowcell",2)
+			if(0.01 to 0.25)
+				throw_alert("charge","lowcell",3)
+			else
+				throw_alert("charge","emptycell")
+	else
+		throw_alert("charge","nocell")
+
+
+	if(pullin)
+		if(pulling)
+			pullin.icon_state = "pull"
 		else
-			src.cells.icon_state = "charge-empty"
-
-	if(bodytemp)
-		switch(bodytemperature) //310.055 optimal body temp
-			if(335 to INFINITY)
-				bodytemp.icon_state = "temp2"
-			if(320 to 335)
-				bodytemp.icon_state = "temp1"
-			if(300 to 320)
-				bodytemp.icon_state = "temp0"
-			if(260 to 300)
-				bodytemp.icon_state = "temp-1"
-			else
-				bodytemp.icon_state = "temp-2"
-
-		if(pullin)
-			if(pulling)
-				pullin.icon_state = "pull"
-			else
-				pullin.icon_state = "pull0"
-
-//Oxygen and fire does nothing yet!!
-//	if (src.oxygen) src.oxygen.icon_state = "oxy[src.oxygen_alert ? 1 : 0]"
-//	if (src.fire) src.fire.icon_state = "fire[src.fire_alert ? 1 : 0]"
+			pullin.icon_state = "pull0"
 
 	client.screen.Remove(global_hud.blurry,global_hud.druggy,global_hud.vimpaired)
 
 	if ((src.blind && src.stat != 2))
-		if(src.blinded)
+		if(src.eye_blind)
 			src.blind.layer = 18
 		else
 			src.blind.layer = 0
-			if (src.disabilities & NEARSIGHTED)
+			if (src.disabilities & NEARSIGHT)
 				src.client.screen += global_hud.vimpaired
 
 			if (src.eye_blurry)
@@ -288,21 +257,23 @@
 /mob/living/silicon/robot/handle_fire()
 	if(..())
 		return
-	adjustFireLoss(3)
+	if(fire_stacks > 0)
+		fire_stacks--
+		fire_stacks = max(0, fire_stacks)
+	else
+		ExtinguishMob()
+
+	//adjustFireLoss(3)
 	return
 
 /mob/living/silicon/robot/update_fire()
 	overlays -= image("icon"='icons/mob/OnFire.dmi', "icon_state"="Standing")
 	if(on_fire)
 		overlays += image("icon"='icons/mob/OnFire.dmi', "icon_state"="Standing")
-	update_icons()
-	return
 
 /mob/living/silicon/robot/fire_act()
 	if(!on_fire) //Silicons don't gain stacks from hotspots, but hotspots can ignite them
 		IgniteMob()
-
-//Robots on fire
 
 /mob/living/silicon/robot/update_canmove()
 	if(paralysis || stunned || weakened || buckled || lockcharge) canmove = 0

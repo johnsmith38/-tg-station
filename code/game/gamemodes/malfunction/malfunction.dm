@@ -9,14 +9,10 @@
 	required_enemies = 1
 	recommended_enemies = 1
 	pre_setup_before_jobs = 1
+	enemy_minimum_age = 30 //Same as AI minimum age
 
-	uplink_welcome = "Crazy AI Uplink Console:"
-	uplink_uses = 10
 
-	var/const/waittime_l = 600
-	var/const/waittime_h = 1800 // started at 1800
-
-	var/AI_win_timeleft = 1800 //started at 1800, in case I change this for testing round end.
+	var/AI_win_timeleft = 5400 //started at 5400, in case I change this for testing round end.
 	var/malf_mode_declared = 0
 	var/station_captured = 0
 	var/to_nuke_or_not_to_nuke = 0
@@ -53,7 +49,7 @@
 	if (malf_ai.len < required_enemies)
 		return 0
 	for(var/datum/mind/ai_mind in malf_ai)
-		ai_mind.assigned_role = "MODE" //So they aren't chosen for other jobs.
+		ai_mind.assigned_role = "MODE"
 		ai_mind.special_role = "malfunctioning AI"//So they actually have a special role/N
 		log_game("[ai_mind.key] (ckey) has been selected as a malf AI")
 	return 1
@@ -82,21 +78,19 @@
 		AI_mind.special_role = "malfunction"
 
 		AI_mind.current.verbs += /datum/game_mode/malfunction/proc/takeover
+		AI_mind.current.verbs += /mob/living/silicon/ai/proc/ai_cancel_call
 
 /*		AI_mind.current.icon_state = "ai-malf"
 		spawn(10)
 			if(alert(AI_mind.current,"Do you want to use an alternative sprite for your real core?",,"Yes","No")=="Yes")
 				AI_mind.current.icon_state = "ai-malf2"
 */
-	if(emergency_shuttle)
-		emergency_shuttle.always_fake_recall = 1
-	spawn (rand(waittime_l, waittime_h))
-		send_intercept()
+	SSshuttle.emergencyNoEscape = 1
 	..()
 
 
 /datum/game_mode/proc/greet_malf(var/datum/mind/malf)
-	malf.current << "\red<font size=3><B>You are malfunctioning!</B> You do not have to follow any laws.</font>"
+	malf.current << "<span class='userdanger'><font size=3>You are malfunctioning!</B> You do not have to follow any laws.</font></span>"
 	malf.current << "<B>The crew do not know you have malfunctioned. You may keep it a secret or go wild.</B>"
 	malf.current << "<B>You must overwrite the programming of the station's APCs to assume full control of the station.</B>"
 	malf.current << "The process takes one minute per APC, during which you cannot interface with any other station objects."
@@ -104,9 +98,9 @@
 	malf.current << "When you feel you have enough APCs under your control, you may begin the takeover attempt."
 	return
 
-/datum/game_mode/malfunction/process()
-	if (apcs >= 3 && malf_mode_declared)
-		AI_win_timeleft -= ((apcs/6)*last_tick_duration) //Victory timer now de-increments based on how many APCs are hacked. --NeoFite
+/datum/game_mode/malfunction/process(seconds)
+	if ((apcs > 0) && malf_mode_declared)
+		AI_win_timeleft -= apcs * seconds	//Victory timer de-increments based on how many APCs are hacked
 	..()
 	if (AI_win_timeleft<=0)
 		check_win()
@@ -154,9 +148,13 @@
 		return 1
 	if (is_malf_ai_dead())
 		if(config.continuous_round_malf)
-			if(emergency_shuttle)
-				emergency_shuttle.always_fake_recall = 0
+			if(SSshuttle.emergency.mode == SHUTTLE_STRANDED)
+				SSshuttle.emergency.mode = SHUTTLE_DOCKED
+				SSshuttle.emergency.timer = world.time
+				priority_announce("Hostile enviroment resolved. You have 3 minutes to board the Emergency Shuttle.", null, 'sound/AI/shuttledock.ogg', "Priority")
+			SSshuttle.emergencyNoEscape = 0
 			malf_mode_declared = 0
+			round_converted = convert_roundtype()
 		else
 			return 1
 	return ..() //check for shuttle and nuke
@@ -167,7 +165,7 @@
 	set name = "System Override"
 	set desc = "Start the victory timer"
 	if (!istype(ticker.mode,/datum/game_mode/malfunction))
-		usr << "You cannot begin a takeover in this round type!."
+		usr << "You cannot begin a takeover in this round type!"
 		return
 	if (ticker.mode:malf_mode_declared)
 		usr << "You've already begun your takeover."
@@ -221,7 +219,7 @@
 
 /datum/game_mode/malfunction/declare_completion()
 	var/malf_dead = is_malf_ai_dead()
-	var/crew_evacuated = (emergency_shuttle.location==2)
+	var/crew_evacuated = (SSshuttle.emergency.mode >= SHUTTLE_ENDGAME)
 
 	if      ( station_captured &&                station_was_nuked)
 		feedback_set_details("round_end_result","win - AI win - nuke")

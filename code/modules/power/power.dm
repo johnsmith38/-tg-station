@@ -11,7 +11,6 @@
 	icon = 'icons/obj/power.dmi'
 	anchored = 1.0
 	var/datum/powernet/powernet = null
-	var/directwired = 1		// TODEL
 	use_power = 0
 	idle_power_usage = 0
 	active_power_usage = 0
@@ -74,6 +73,15 @@
 		chan = power_channel
 	A.master.use_power(amount, chan)
 
+/obj/machinery/proc/addStaticPower(value, powerchannel)
+	var/area/A = get_area(src)
+	if(!A || !A.master)
+		return
+	A.master.addStaticPower(value, powerchannel)
+
+/obj/machinery/proc/removeStaticPower(value, powerchannel)
+	addStaticPower(-value, powerchannel)
+
 /obj/machinery/proc/power_change()		// called whenever the power settings of the containing area change
 										// by default, check equipment channel & set flag
 										// can override if needed
@@ -106,7 +114,7 @@
 
 // attach a wire to a power machine - leads from the turf you are standing on
 //almost never called, overwritten by all power machines but terminal and generator
-/obj/machinery/power/attackby(obj/item/weapon/W, mob/user)
+/obj/machinery/power/attackby(obj/item/weapon/W, mob/user, params)
 
 	if(istype(W, /obj/item/stack/cable_coil))
 
@@ -120,7 +128,7 @@
 		if(get_dist(src, user) > 1)
 			return
 
-		coil.turf_place(T, user)
+		coil.place_turf(T, user)
 		return
 	else
 		..()
@@ -209,14 +217,15 @@
 
 
 // rebuild all power networks from scratch - only called at world creation or by the admin verb
-/proc/makepowernets()
+/datum/subsystem/power/proc/makepowernets()
 	for(var/datum/powernet/PN in powernets)
 		del(PN)
 	powernets.Cut()
 
 	for(var/obj/structure/cable/PC in cable_list)
 		if(!PC.powernet)
-			PC.powernet = new()
+			var/datum/powernet/NewPN = new()
+			NewPN.add_cable(PC)
 			propagate_network(PC,PC.powernet)
 
 //remove the old powernet and replace it with a new one throughout the network.
@@ -266,21 +275,13 @@
 		net1 = net2
 		net2 = temp
 
-	//we don't use add_cable and add_machine here, because that could
-	//change the size of net2.nodes or net2.cables while in the loop (runtime galore)
-	for(var/i=1,i<=net2.nodes.len,i++)		//merge net2 into net1
-		var/obj/machinery/power/Node = net2.nodes[i] //merge power machines
-		if(Node)
-			Node.powernet = net1
-			net1.nodes[Node] = Node
+	//merge net2 into net1
+	for(var/obj/structure/cable/Cable in net2.cables) //merge cables
+		net1.add_cable(Cable)
 
-	for(var/i=1,i<=net2.cables.len,i++)
-		var/obj/structure/cable/Cable = net2.cables[i] //merge cables
-		if(Cable)
-			Cable.powernet = net1
-			net1.cables += Cable
-
-	qdel(net2) //garbage collect the now empty powernet
+	for(var/obj/machinery/power/Node in net2.nodes) //merge power machines
+		if(!Node.connect_to_network())
+			Node.disconnect_from_network() //if somehow we can't connect the machine to the new powernet, disconnect it from the old nonetheless
 
 	return net1
 
@@ -355,10 +356,10 @@
 ////////////////////////////////////////////
 
 /datum/powernet/New()
-	powernets += src
+	SSpower.powernets += src
 
 /datum/powernet/Destroy()
-	powernets -= src
+	SSpower.powernets -= src
 
 /datum/powernet/proc/is_empty()
 	return !cables.len && !nodes.len
@@ -400,7 +401,7 @@
 		if(M.powernet == src)
 			return
 		else
-			M.powernet.remove_machine(M) //..remove it
+			M.disconnect_from_network()//..remove it
 	M.powernet = src
 	nodes[M] = M
 

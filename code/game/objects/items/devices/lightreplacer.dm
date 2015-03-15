@@ -66,30 +66,23 @@
 	failmsg = "The [name]'s refill light blinks red."
 	..()
 
-/obj/item/device/lightreplacer/examine()
-	set src in view(2)
+/obj/item/device/lightreplacer/examine(mob/user)
 	..()
-	usr << "It has [uses] lights remaining."
+	user << "It has [uses] light\s remaining."
 
-/obj/item/device/lightreplacer/attackby(obj/item/W, mob/user)
-	if(istype(W,  /obj/item/weapon/card/emag) && emagged == 0)
-		Emag()
-		return
+/obj/item/device/lightreplacer/attackby(obj/item/W, mob/user, params)
 
 	if(istype(W, /obj/item/stack/sheet/glass))
 		var/obj/item/stack/sheet/glass/G = W
-		if(G.amount - decrement >= 0 && uses < max_uses)
-			var/remaining = max(G.amount - decrement, 0)
-			if(!remaining && !(G.amount - decrement) == 0)
-				user << "There isn't enough glass."
-				return
-			G.amount = remaining
-			if(!G.amount)
-				user.drop_item()
-				qdel(G)
-			AddUses(increment)
-			user << "You insert a piece of glass into the [src.name]. You have [uses] lights remaining."
+		if(uses >= max_uses)
+			user << "<span class='warning'>[src.name] is full.</span>"
 			return
+		else if(G.use(decrement))
+			AddUses(increment)
+			user << "<span class='notice'>You insert a piece of glass into the [src.name]. You have [uses] lights remaining.</span>"
+			return
+		else
+			user << "<span class='warning'>You need one sheet of glass to replace lights.</span>"
 
 	if(istype(W, /obj/item/weapon/light))
 		var/obj/item/weapon/light/L = W
@@ -104,6 +97,9 @@
 			user << "You need a working light."
 			return
 
+/obj/item/device/lightreplacer/emag_act()
+	if(!emagged)
+		Emag()
 
 /obj/item/device/lightreplacer/attack_self(mob/user)
 	/* // This would probably be a bit OP. If you want it though, uncomment the code.
@@ -141,7 +137,7 @@
 	if(target.status != LIGHT_OK)
 		if(CanUse(U))
 			if(!Use(U)) return
-			U << "<span class='notice'>You replace the [target.fitting] with the [src].</span>"
+			U << "<span class='notice'>You replace the [target.fitting] with \the [src].</span>"
 
 			if(target.status != LIGHT_EMPTY)
 

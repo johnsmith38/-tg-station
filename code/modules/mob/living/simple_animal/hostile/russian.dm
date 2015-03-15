@@ -29,8 +29,8 @@
 	max_co2 = 5
 	min_n2 = 0
 	max_n2 = 0
-	unsuitable_atoms_damage = 15
-	faction = "russian"
+	unsuitable_atmos_damage = 15
+	faction = list("russian")
 	status_flags = CANPUSH
 
 
@@ -46,6 +46,10 @@
 	projectilesound = 'sound/weapons/Gunshot.ogg'
 	casingtype = /obj/item/ammo_casing/a357
 
+/mob/living/simple_animal/hostile/russian/ranged/New()
+	if(prob(50) && ispath(weapon1,/obj/item/weapon/gun/projectile/revolver/mateba)) //to preserve varedits
+		weapon1 = /obj/item/weapon/gun/projectile/shotgun/boltaction
+		casingtype = /obj/item/ammo_casing/a762
 
 /mob/living/simple_animal/hostile/russian/Die()
 	..()

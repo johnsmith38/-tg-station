@@ -100,6 +100,7 @@ var/datum/global_hud/global_hud = new()
 	var/obj/screen/blobpwrdisplay
 	var/obj/screen/blobhealthdisplay
 	var/obj/screen/alien_plasma_display
+	var/obj/screen/nightvisionicon
 	var/obj/screen/r_hand_hud_object
 	var/obj/screen/l_hand_hud_object
 	var/obj/screen/action_intent
@@ -194,6 +195,8 @@ datum/hud/New(mob/owner)
 		ghost_hud()
 	else if(isovermind(mymob))
 		blob_hud()
+	else if(isdrone(mymob))
+		drone_hud(ui_style)
 
 	if(istype(mymob.loc,/obj/mecha))
 		show_hud(HUD_STYLE_REDUCED)
@@ -222,20 +225,16 @@ datum/hud/New(mob/owner)
 
 			action_intent.screen_loc = ui_acti //Restore intent selection to the original position
 			mymob.client.screen += mymob.zone_sel				//This one is a special snowflake
-			mymob.client.screen += mymob.bodytemp				//As are the rest of these...
-			mymob.client.screen += mymob.fire
-			mymob.client.screen += mymob.healths
+			mymob.client.screen += mymob.healths				//As are the rest of these.
+			mymob.client.screen += mymob.healthdoll
 			mymob.client.screen += mymob.internals
-			mymob.client.screen += mymob.nutrition_icon
-			mymob.client.screen += mymob.oxygen
-			mymob.client.screen += mymob.pressure
-			mymob.client.screen += mymob.toxin
 			mymob.client.screen += lingstingdisplay
 			mymob.client.screen += lingchemdisplay
 
 			hidden_inventory_update()
 			persistant_inventory_update()
 			mymob.update_action_buttons()
+			reorganize_alerts()
 		if(HUD_STYLE_REDUCED)	//Reduced HUD
 			hud_shown = 0	//Governs behavior of other procs
 			if(adding)
@@ -261,6 +260,7 @@ datum/hud/New(mob/owner)
 			hidden_inventory_update()
 			persistant_inventory_update()
 			mymob.update_action_buttons()
+			reorganize_alerts()
 		if(HUD_STYLE_NOHUD)	//No HUD
 			hud_shown = 0	//Governs behavior of other procs
 			if(adding)
@@ -274,20 +274,16 @@ datum/hud/New(mob/owner)
 
 			//These ones are not a part of 'adding', 'other' or 'hotkeybuttons' but we want them gone.
 			mymob.client.screen -= mymob.zone_sel	//zone_sel is a mob variable for some reason.
-			mymob.client.screen -= mymob.bodytemp
-			mymob.client.screen -= mymob.fire
 			mymob.client.screen -= mymob.healths
+			mymob.client.screen -= mymob.healthdoll
 			mymob.client.screen -= mymob.internals
-			mymob.client.screen -= mymob.nutrition_icon
-			mymob.client.screen -= mymob.oxygen
-			mymob.client.screen -= mymob.pressure
-			mymob.client.screen -= mymob.toxin
 			mymob.client.screen -= lingstingdisplay
 			mymob.client.screen -= lingchemdisplay
 
 			hidden_inventory_update()
 			persistant_inventory_update()
 			mymob.update_action_buttons()
+			reorganize_alerts()
 	hud_version = display_hud_version
 
 //Triggered when F12 is pressed (Unless someone changed something in the DMF)
@@ -298,7 +294,7 @@ datum/hud/New(mob/owner)
 	if(hud_used && client)
 		if(ishuman(src))
 			hud_used.show_hud() //Shows the next hud preset
-			usr << "<span class ='info'>Switched HUD mode.</span>"
+			usr << "<span class ='info'>Switched HUD mode. Press F12 to toggle.</span>"
 		else
 			usr << "<span class ='warning'>Inventory hiding is currently only supported for human mobs, sorry.</span>"
 	else

@@ -8,15 +8,11 @@
 	flag = "laser"
 	eyeblur = 2
 
-/obj/item/projectile/practice
-	name = "laser"
-	icon_state = "laser"
-	pass_flags = PASSTABLE | PASSGLASS | PASSGRILLE
+/obj/item/projectile/beam/practice
+	name = "practice laser"
 	damage = 0
 	hitsound = null
-	damage_type = BURN
-	flag = "laser"
-	eyeblur = 2
+	nodamage = 1
 
 /obj/item/projectile/beam/scatter
 	name = "laser pellet"
@@ -36,29 +32,42 @@
 	irradiate = 30
 	forcedodge = 1
 
+/obj/item/projectile/beam/disabler
+	name = "disabler beam"
+	icon_state = "omnilaser"
+	damage = 36
+	damage_type = STAMINA
+	flag = "energy"
+	hitsound = 'sound/weapons/tap.ogg'
+	eyeblur = 0
+
 /obj/item/projectile/beam/pulse
 	name = "pulse"
 	icon_state = "u_laser"
 	damage = 50
-	on_hit(var/atom/target, var/blocked = 0)
-		if(istype(target,/turf/)||istype(target,/obj/structure/))
-			target.ex_act(2)
-		..()
 
+/obj/item/projectile/beam/pulse/on_hit(var/atom/target, var/blocked = 0)
+	if(istype(target,/turf/)||istype(target,/obj/structure/))
+		target.ex_act(2)
+	..()
 
-/obj/item/projectile/beam/deathlaser
-	name = "death laser"
-	icon_state = "heavylaser"
-	damage = 60
+/obj/item/projectile/beam/pulse/shot
+	damage = 40
 
 /obj/item/projectile/beam/emitter
 	name = "emitter beam"
 	icon_state = "emitter"
 	damage = 30
 
+/obj/item/projectile/beam/emitter/singularity_pull()
+	return //don't want the emitters to miss
+
+obj/item/projectile/beam/emitter/Destroy()
+	PlaceInPool(src)
+	return 1 //cancels the GCing
 
 /obj/item/projectile/lasertag
-	name = "lasertag beam"
+	name = "laser tag beam"
 	icon_state = "omnilaser"
 	hitsound = null
 	damage = 0

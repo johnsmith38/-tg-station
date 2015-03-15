@@ -1,9 +1,20 @@
 /datum/game_mode/blob/check_finished()
-	if(!declared)//No blobs have been spawned yet
+	if(round_converted)
+		return ..()
+	if(infected_crew.len > burst)//Some blobs have yet to burst
 		return 0
 	if(blobwincount <= blobs.len)//Blob took over
 		return 1
 	if(!blob_cores.len) // blob is dead
+		if(config.continuous_round_blob)
+			round_converted = convert_roundtype()
+			if(!round_converted)
+				return 1
+			if(SSshuttle.emergency.mode == SHUTTLE_STRANDED)
+				SSshuttle.emergency.mode = SHUTTLE_DOCKED
+				SSshuttle.emergency.timer = world.time
+				priority_announce("Hostile enviroment resolved. You have 3 minutes to board the Emergency Shuttle.", null, 'sound/AI/shuttledock.ogg', "Priority")
+			return 0
 		return 1
 	if(station_was_nuked)//Nuke went off
 		return 1
@@ -12,28 +23,23 @@
 
 /datum/game_mode/blob/declare_completion()
 	if(blobwincount <= blobs.len)
-		feedback_set_details("round_end_result","loss - blob took over")
+		feedback_set_details("round_end_result","win - blob took over")
 		world << "<FONT size = 3><B>The blob has taken over the station!</B></FONT>"
 		world << "<B>The entire station was eaten by the Blob</B>"
-		log_game("Blob mode was lost.")
+		log_game("Blob mode completed with a blob victory.")
 
 	else if(station_was_nuked)
 		feedback_set_details("round_end_result","halfwin - nuke")
 		world << "<FONT size = 3><B>Partial Win: The station has been destroyed!</B></FONT>"
 		world << "<B>Directive 7-12 has been successfully carried out preventing the Blob from spreading.</B>"
-		log_game("Blob mode was tie (station destroyed).")
+		log_game("Blob mode completed with a tie (station destroyed).")
 
 	else if(!blob_cores.len)
-		feedback_set_details("round_end_result","win - blob eliminated")
+		feedback_set_details("round_end_result","loss - blob eliminated")
 		world << "<FONT size = 3><B>The staff has won!</B></FONT>"
 		world << "<B>The alien organism has been eradicated from the station</B>"
-
-		var/datum/station_state/end_state = new /datum/station_state()
-		end_state.count()
-		var/percent = round( 100.0 *  start_state.score(end_state), 0.1)
-		world << "<B>The station is [percent]% intact.</B>"
-		log_game("Blob mode was won with station [percent]% intact.")
-		world << "\blue Rebooting in 30s"
+		log_game("Blob mode completed with a crew victory.")
+		world << "<span class='notice'>Rebooting in 30s</span>"
 	..()
 	return 1
 

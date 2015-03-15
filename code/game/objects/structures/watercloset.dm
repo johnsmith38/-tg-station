@@ -18,8 +18,10 @@
 
 /obj/structure/toilet/attack_hand(mob/living/user)
 	if(swirlie)
-		user.visible_message("<span class='danger'>[user] slams the toilet seat onto [swirlie]'s head!</span>", "<span class='notice'>You slam the toilet seat onto [swirlie]'s head!</span>", "You hear reverberating porcelain.")
-		swirlie.adjustBruteLoss(8)
+		user.changeNext_move(CLICK_CD_MELEE)
+		playsound(src.loc, "swing_hit", 25, 1)
+		swirlie.visible_message("<span class='danger'>[user] slams the toilet seat onto [swirlie]'s head!</span>", "<span class='userdanger'>[user] slams the toilet seat onto [swirlie]'s head!</span>", "You hear reverberating porcelain.")
+		swirlie.adjustBruteLoss(5)
 		return
 
 	if(cistern && !open)
@@ -44,7 +46,7 @@
 	icon_state = "toilet[open][cistern]"
 
 
-/obj/structure/toilet/attackby(obj/item/I, mob/living/user)
+/obj/structure/toilet/attackby(obj/item/I, mob/living/user, params)
 	if(istype(I, /obj/item/weapon/crowbar))
 		user << "<span class='notice'>You start to [cistern ? "replace the lid on the cistern" : "lift the lid off the cistern"].</span>"
 		playsound(loc, 'sound/effects/stonedoor_openclose.ogg', 50, 1)
@@ -55,6 +57,7 @@
 			return
 
 	if(istype(I, /obj/item/weapon/grab))
+		user.changeNext_move(CLICK_CD_MELEE)
 		var/obj/item/weapon/grab/G = I
 		if(!G.confirm())
 			return
@@ -64,21 +67,23 @@
 				if(GM.loc != get_turf(src))
 					user << "<span class='notice'>[GM] needs to be on [src].</span>"
 					return
-				if(open && !swirlie)
-					user.visible_message("<span class='danger'>[user] starts to give [GM] a swirlie!</span>", "<span class='notice'>You start to give [GM] a swirlie!</span>")
-					swirlie = GM
-					if(do_after(user, 30, 5, 0))
-						user.visible_message("<span class='danger'>[user] gives [GM] a swirlie!</span>", "<span class='notice'>You give [GM] a swirlie!</span>", "You hear a toilet flushing.")
-						if(iscarbon(GM))
-							var/mob/living/carbon/C = GM
-							if(!C.internal)
-								C.adjustOxyLoss(5)
-						else
-							GM.adjustOxyLoss(5)
-					swirlie = null
-				else
-					user.visible_message("<span class='danger'>[user] slams [GM.name] into the [src]!</span>", "<span class='notice'>You slam [GM] into [src]!</span>")
-					GM.adjustBruteLoss(8)
+				if(!swirlie)
+					if(open)
+						GM.visible_message("<span class='danger'>[user] starts to give [GM] a swirlie!</span>", "<span class='userdanger'>[user] starts to give [GM] a swirlie!</span>")
+						swirlie = GM
+						if(do_after(user, 30, 5, 0))
+							GM.visible_message("<span class='danger'>[user] gives [GM] a swirlie!</span>", "<span class='userdanger'>[user] gives [GM] a swirlie!</span>", "You hear a toilet flushing.")
+							if(iscarbon(GM))
+								var/mob/living/carbon/C = GM
+								if(!C.internal)
+									C.adjustOxyLoss(5)
+							else
+								GM.adjustOxyLoss(5)
+						swirlie = null
+					else
+						playsound(src.loc, 'sound/effects/bang.ogg', 25, 1)
+						GM.visible_message("<span class='danger'>[user] slams [GM.name] into [src]!</span>", "<span class='userdanger'>[user] slams [GM.name] into [src]!</span>")
+						GM.adjustBruteLoss(5)
 			else
 				user << "<span class='notice'>You need a tighter grip.</span>"
 
@@ -108,7 +113,7 @@
 	anchored = 1
 
 
-/obj/structure/urinal/attackby(obj/item/I, mob/user)
+/obj/structure/urinal/attackby(obj/item/I, mob/user, params)
 	if(istype(I, /obj/item/weapon/grab))
 		var/obj/item/weapon/grab/G = I
 		if(!G.confirm())
@@ -123,7 +128,6 @@
 				GM.adjustBruteLoss(8)
 			else
 				user << "<span class='notice'>You need a tighter grip.</span>"
-
 
 
 /obj/machinery/shower
@@ -153,16 +157,21 @@
 /obj/machinery/shower/attack_hand(mob/M)
 	on = !on
 	update_icon()
+	add_fingerprint(M)
 	if(on)
 		for (var/atom/movable/G in loc)
-			Crossed(G)
+			wash(G)
+	else
+		if(istype(loc, /turf/simulated))
+			var/turf/simulated/tile = loc
+			tile.MakeSlippery()
 
 
-/obj/machinery/shower/attackby(obj/item/I, mob/user)
+/obj/machinery/shower/attackby(obj/item/I, mob/user, params)
 	if(I.type == /obj/item/device/analyzer)
 		user << "<span class='notice'>The water temperature seems to be [watertemp].</span>"
 	if(istype(I, /obj/item/weapon/wrench))
-		user << "<span class='notice'>You begin to adjust the temperature valve with the [I].</span>"
+		user << "<span class='notice'>You begin to adjust the temperature valve with \the [I].</span>"
 		if(do_after(user, 50))
 			switch(watertemp)
 				if("normal")
@@ -171,7 +180,9 @@
 					watertemp = "boiling"
 				if("boiling")
 					watertemp = "normal"
-			user.visible_message("<span class='notice'>[user] adjusts the shower with the [I].</span>", "<span class='notice'>You adjust the shower with the [I].</span>")
+			user.visible_message("<span class='notice'>[user] adjusts the shower with \the [I].</span>", "<span class='notice'>You adjust the shower with \the [I] to [watertemp] temperature.</span>")
+			log_game("[key_name(user)] has wrenched a shower to [watertemp] at ([x],[y],[z])")
+			add_hiddenprint(user)
 
 
 /obj/machinery/shower/update_icon()	//this is terribly unreadable, but basically it makes the shower mist up
@@ -203,9 +214,10 @@
 /obj/machinery/shower/Crossed(atom/movable/O)
 	..()
 	wash(O)
-	if(ismob(O))
-		mobpresent += 1
-		check_heat(O)
+	if(iscarbon(O) && on)
+		var/mob/living/carbon/M=O
+		M.slip(4,2,null,NO_SLIP_WHEN_WALKING)
+
 
 
 /obj/machinery/shower/Uncrossed(atom/movable/O)
@@ -217,7 +229,9 @@
 //Yes, showers are super powerful as far as washing goes.
 /obj/machinery/shower/proc/wash(atom/movable/O)
 	if(!on) return
-
+	if(ismob(O))
+		mobpresent += 1
+		check_heat(O)
 	if(isliving(O))
 		var/mob/living/L = O
 		L.ExtinguishMob()
@@ -303,6 +317,7 @@
 		check_heat(C)
 
 
+
 /obj/machinery/shower/proc/check_heat(mob/M)
 	if(!on || watertemp == "normal") return
 	if(iscarbon(M))
@@ -360,15 +375,10 @@
 	user.visible_message("<span class='notice'>[user] washes their hands in [src].</span>")
 
 
-/obj/structure/sink/attackby(obj/item/O, mob/user)
+/obj/structure/sink/attackby(obj/item/O, mob/user, params)
 	if(busy)
 		user << "<span class='notice'>Someone's already washing here.</span>"
 		return
-
-	if(istype(O, /obj/item/trash))
-		user.drop_item()
-		user << "<span class='notice'>You wash up [O].</span>"	//sims!!!
-		qdel(O)
 
 	if(istype(O, /obj/item/weapon/reagent_containers))
 		var/obj/item/weapon/reagent_containers/RG = O
@@ -430,7 +440,7 @@
 	..()
 	icon_state = "puddle"
 
-/obj/structure/sink/puddle/attackby(obj/item/O as obj, mob/user as mob)
+/obj/structure/sink/puddle/attackby(obj/item/O as obj, mob/user as mob, params)
 	icon_state = "puddle-splash"
 	..()
 	icon_state = "puddle"

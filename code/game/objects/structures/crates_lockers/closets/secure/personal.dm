@@ -7,6 +7,8 @@
 /obj/structure/closet/secure_closet/personal/New()
 	..()
 	if(prob(50))
+		new /obj/item/weapon/storage/backpack/dufflebag(src)
+	if(prob(50))
 		new /obj/item/weapon/storage/backpack(src)
 	else
 		new /obj/item/weapon/storage/backpack/satchel_norm(src)
@@ -53,13 +55,13 @@
 	new /obj/item/device/radio/headset( src )
 	return
 
-/obj/structure/closet/secure_closet/personal/attackby(obj/item/W as obj, mob/user as mob)
+/obj/structure/closet/secure_closet/personal/attackby(obj/item/W as obj, mob/user as mob, params)
 
 	if(istype(W))
 		var/obj/item/weapon/card/id/I = W.GetID()
 		if(istype(I))
 			if(src.broken)
-				user << "\red It appears to be broken."
+				user << "<span class='danger'>It appears to be broken.</span>"
 				return
 			if(!I || !I.registered_name)	return
 			if(src.allowed(user) || !src.registered_name || (istype(I) && (src.registered_name == I.registered_name)))
@@ -72,7 +74,7 @@
 					src.registered_name = I.registered_name
 					src.desc = "Owned by [I.registered_name]."
 			else
-				user << "\red Access Denied"
+				user << "<span class='danger'>Access Denied.</span>"
 		else
 			..()
 	else

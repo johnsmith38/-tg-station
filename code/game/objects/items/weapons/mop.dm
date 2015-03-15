@@ -11,15 +11,18 @@
 	attack_verb = list("mopped", "bashed", "bludgeoned", "whacked")
 	var/mopping = 0
 	var/mopcount = 0
-
+	var/mopcap = 5
+	var/mopspeed = 30
 
 /obj/item/weapon/mop/New()
-	create_reagents(5)
+	create_reagents(mopcap)
 
 
 obj/item/weapon/mop/proc/clean(turf/simulated/A)
 	if(reagents.has_reagent("water", 1) || reagents.has_reagent("holywater", 1))
 		A.clean_blood()
+		var/turf/simulated/floor/F = A
+		F.dirt = 0
 		for(var/obj/effect/O in A)
 			if(istype(O,/obj/effect/decal/cleanable) || istype(O,/obj/effect/overlay))
 				qdel(O)
@@ -40,14 +43,14 @@ obj/item/weapon/mop/proc/clean(turf/simulated/A)
 	A = null
 
 	if(istype(turf))
-		user.visible_message("<span class='warning'>[user] begins to clean \the [turf].</span>")
+		user.visible_message("<span class='warning'>[user] begins to clean \the [turf] with [src].</span>")
 
-		if(do_after(user, 40))
+		if(do_after(user, mopspeed))
 			clean(turf)
 			user << "<span class='notice'>You have finished mopping!</span>"
 
 
-/obj/effect/attackby(obj/item/I, mob/user)
+/obj/effect/attackby(obj/item/I, mob/user, params)
 	if(istype(I, /obj/item/weapon/mop) || istype(I, /obj/item/weapon/soap))
 		return
 	..()
@@ -62,5 +65,3 @@ obj/item/weapon/mop/proc/clean(turf/simulated/A)
 
 /obj/item/weapon/mop/cyborg/janicart_insert(mob/user, obj/structure/janitorialcart/J)
 	return
-
-

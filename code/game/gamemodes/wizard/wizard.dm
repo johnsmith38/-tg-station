@@ -9,28 +9,23 @@
 	required_enemies = 1
 	recommended_enemies = 1
 	pre_setup_before_jobs = 1
-
-	uplink_welcome = "Wizardly Uplink Console:"
-	uplink_uses = 10
-
+	enemy_minimum_age = 14
+	var/use_huds = 0
 	var/finished = 0
-
-	var/const/waittime_l = 600 //lower bound on time before intercept arrives (in tenths of seconds)
-	var/const/waittime_h = 1800 //upper bound on time before intercept arrives (in tenths of seconds)
 
 /datum/game_mode/wizard/announce()
 	world << "<B>The current game mode is - Wizard!</B>"
-	world << "<B>There is a \red SPACE WIZARD\black on the station. You can't let him achieve his objective!</B>"
+	world << "<B>There is a <span class='danger'>SPACE WIZARD</span>\black on the station. You can't let him achieve his objective!</B>"
 
 /datum/game_mode/wizard/pre_setup()
 
 	var/datum/mind/wizard = pick(antag_candidates)
 	wizards += wizard
 	modePlayer += wizard
-	wizard.assigned_role = "MODE" //So they aren't chosen for other jobs.
+	wizard.assigned_role = "MODE"
 	wizard.special_role = "Wizard"
 	if(wizardstart.len == 0)
-		wizard.current << "<B>\red A starting location for you could not be found, please report this bug!</B>"
+		wizard.current << "<span class='userdanger'>A starting location for you could not be found, please report this bug!</span>"
 		return 0
 	for(var/datum/mind/wiz in wizards)
 		wiz.current.loc = pick(wizardstart)
@@ -46,9 +41,8 @@
 		equip_wizard(wizard.current)
 		name_wizard(wizard.current)
 		greet_wizard(wizard)
-
-	spawn (rand(waittime_l, waittime_h))
-		send_intercept()
+		if(use_huds)
+			update_wiz_icons_added(wizard)
 	..()
 	return
 
@@ -121,7 +115,7 @@
 
 /datum/game_mode/proc/greet_wizard(var/datum/mind/wizard, var/you_are=1)
 	if (you_are)
-		wizard.current << "<B>\red You are the Space Wizard!</B>"
+		wizard.current << "<span class='userdanger'>You are the Space Wizard!</span>"
 	wizard.current << "<B>The Space Wizards Federation has given you the following tasks:</B>"
 
 	var/obj_count = 1
@@ -163,9 +157,12 @@
 	wizard_mob.equip_to_slot_or_del(new /obj/item/weapon/storage/box/survival(wizard_mob), slot_in_backpack)
 //	wizard_mob.equip_to_slot_or_del(new /obj/item/weapon/scrying_gem(wizard_mob), slot_l_store) For scrying gem.
 	wizard_mob.equip_to_slot_or_del(new /obj/item/weapon/teleportation_scroll(wizard_mob), slot_r_store)
-	wizard_mob.equip_to_slot_or_del(new /obj/item/weapon/spellbook(wizard_mob), slot_r_hand)
+	var/obj/item/weapon/spellbook/spellbook = new /obj/item/weapon/spellbook(wizard_mob)
+	spellbook.owner = wizard_mob
+	wizard_mob.equip_to_slot_or_del(spellbook, slot_r_hand)
 
 	wizard_mob << "You will find a list of available spells in your spell book. Choose your magic arsenal carefully."
+	wizard_mob << "The spellbook is bound to you, and others cannot use it."
 	wizard_mob << "In your pockets you will find a teleport scroll. Use it as needed."
 	wizard_mob.mind.store_memory("<B>Remember:</B> do not forget to prepare your spells.")
 	wizard_mob.update_icons()
@@ -174,7 +171,7 @@
 
 /datum/game_mode/wizard/check_finished()
 
-	if(config.continuous_round_wiz)
+	if(round_converted)
 		return ..()
 
 	var/wizards_alive = 0
@@ -196,16 +193,22 @@
 
 	if (wizards_alive || traitors_alive)
 		return ..()
-	else
-		finished = 1
-		return 1
 
+	if(config.continuous_round_wiz)
+		round_converted = convert_roundtype()
+		if(!round_converted)
+			finished = 1
+			return 1
+		else
+			return ..()
 
+	finished = 1
+	return 1
 
 /datum/game_mode/wizard/declare_completion()
 	if(finished)
 		feedback_set_details("round_end_result","loss - wizard killed")
-		world << "\red <FONT size = 3><B> The wizard[(wizards.len>1)?"s":""] has been killed by the crew! The Space Wizards Federation has been taught a lesson they will not soon forget!</B></FONT>"
+		world << "<span class='userdanger'><FONT size = 3>The wizard[(wizards.len>1)?"s":""] has been killed by the crew! The Space Wizards Federation has been taught a lesson they will not soon forget!</FONT></span>"
 	..()
 	return 1
 
@@ -284,3 +287,19 @@ Made a proc so this is not repeated 14 (or more) times.*/
 		return 0
 	else
 		return 1
+
+
+/proc/iswizard(mob/living/M as mob)
+	return istype(M) && M.mind && ticker && ticker.mode && (M.mind in ticker.mode.wizards)
+
+
+/datum/game_mode/proc/update_wiz_icons_added(datum/mind/wiz_mind)
+	var/datum/atom_hud/antag/wizhud = huds[ANTAG_HUD_WIZ]
+	wizhud.join_hud(wiz_mind.current)
+	set_antag_hud(wiz_mind.current, ((wiz_mind in wizards) ? "wizard" : "apprentice"))
+
+
+/datum/game_mode/proc/update_wiz_icons_removed(datum/mind/wiz_mind)
+	var/datum/atom_hud/antag/wizhud = huds[ANTAG_HUD_WIZ]
+	wizhud.leave_hud(wiz_mind.current)
+	set_antag_hud(wiz_mind.current, null)

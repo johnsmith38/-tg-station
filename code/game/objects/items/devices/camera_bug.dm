@@ -42,7 +42,7 @@
 
 /obj/item/device/camera_bug/New()
 	..()
-	processing_objects += src
+	SSobj.processing += src
 
 /obj/item/device/camera_bug/Destroy()
 	if(expansion)
@@ -71,14 +71,14 @@
 	interact(user)
 
 /obj/item/device/camera_bug/check_eye(var/mob/user as mob)
-	if (user.stat || loc != user || !user.canmove || user.blinded || !current)
+	if (user.stat || loc != user || !user.canmove || user.eye_blind || !current)
 		user.reset_view(null)
 		user.unset_machine()
 		return null
 
 	var/turf/T = get_turf(user.loc)
 	if(T.z != current.z || (!skip_bugcheck && current.bug != src) || !current.can_use())
-		user << "\red [src] has lost the signal."
+		user << "<span class='danger'>[src] has lost the signal.</span>"
 		current = null
 		user.reset_view(null)
 		user.unset_machine()
@@ -103,7 +103,7 @@
 				if(NETWORK_BUG,ADMIN_BUG)
 					if(length(list("SS13","MINE")&camera.network))
 						bugged_cameras[camera.c_tag] = camera
-	bugged_cameras = sortAssoc(bugged_cameras)
+	sortList(bugged_cameras)
 	return bugged_cameras
 
 
@@ -169,7 +169,7 @@
 	if(current && current.can_use())
 		var/list/seen = current.can_see()
 		var/list/names = list()
-		for(var/obj/machinery/singularity/S in seen) // god help you if you see more than one
+		for(var/obj/singularity/S in seen) // god help you if you see more than one
 			if(S.name in names)
 				names[S.name]++
 				dat += "[S.name] ([names[S.name]])"
@@ -249,11 +249,11 @@
 		var/obj/machinery/camera/C = locate(href_list["view"])
 		if(istype(C))
 			if(!C.can_use())
-				usr << "\red Something's wrong with that camera.  You can't get a feed."
+				usr << "<span class='danger'>Something's wrong with that camera.  You can't get a feed.</span>"
 				return
 			var/turf/T = get_turf(loc)
 			if(!T || C.z != T.z)
-				usr << "\red You can't get a signal."
+				usr << "<span class='danger'>You can't get a signal.</span>"
 				return
 			current = C
 			spawn(6)
@@ -308,7 +308,7 @@
 				break
 	src.updateSelfDialog()
 
-/obj/item/device/camera_bug/attackby(var/obj/item/W as obj,var/mob/living/user as mob)
+/obj/item/device/camera_bug/attackby(var/obj/item/W as obj,var/mob/living/user as mob, params)
 	if(istype(W,/obj/item/weapon/screwdriver) && expansion)
 		expansion.loc = get_turf(loc)
 		user << "You unscrew [expansion]."
